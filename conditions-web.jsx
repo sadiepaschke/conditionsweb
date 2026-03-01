@@ -832,8 +832,9 @@ function ThemeToggle({ dark, setDark }) {
 // ─── Root Component ─────────────────────────────────────────────────────────
 
 export default function ConditionsWeb() {
-  const [apiKey, setApiKey] = useState("");
-  const [keySubmitted, setKeySubmitted] = useState(false);
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+  const [apiKey, setApiKey] = useState(envKey);
+  const [keySubmitted, setKeySubmitted] = useState(!!envKey);
   const [dark, setDark] = useState(true);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState([]);
