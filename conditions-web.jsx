@@ -832,9 +832,6 @@ function ThemeToggle({ dark, setDark }) {
 // ─── Root Component ─────────────────────────────────────────────────────────
 
 export default function ConditionsWeb() {
-  const envKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-  const [apiKey, setApiKey] = useState(envKey);
-  const [keySubmitted, setKeySubmitted] = useState(!!envKey);
   const [dark, setDark] = useState(true);
   const [started, setStarted] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -868,18 +865,15 @@ export default function ConditionsWeb() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents: conversationHistory.current,
-            generationConfig: { maxOutputTokens: 1000 },
-          }),
-        }
-      );
+      const response = await fetch("/.netlify/functions/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: conversationHistory.current,
+          generationConfig: { maxOutputTokens: 1000 },
+        }),
+      });
 
       const data = await response.json();
 
@@ -922,7 +916,7 @@ export default function ConditionsWeb() {
       ]);
     }
     setLoading(false);
-  }, [loading, apiKey]);
+  }, [loading]);
 
   const handleStart = () => {
     setStarted(true);
@@ -935,22 +929,6 @@ export default function ConditionsWeb() {
       if (input.trim() && !loading) sendMessage(input);
     }
   };
-
-  // ─── API Key Screen ────────────────────────────
-
-  if (!keySubmitted) {
-    return (
-      <>
-        <style>{globalStyles(dark)}</style>
-        <ApiKeyScreen
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          onSubmit={() => setKeySubmitted(true)}
-          dark={dark}
-        />
-      </>
-    );
-  }
 
   // ─── Main App ──────────────────────────────────
 
