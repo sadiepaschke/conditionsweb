@@ -71,11 +71,12 @@ export const api = {
     }
     formData.append("urls", JSON.stringify(urls));
 
-    // Try /api/analyze (Express dev server), fall back to Netlify function
-    let res = await fetch("/api/analyze", { method: "POST", body: formData }).catch(() => null);
-    if (!res || !res.ok) {
-      res = await fetch("/.netlify/functions/analyze", { method: "POST", body: formData });
-    }
+    // In dev, Vite proxies /api to Express. In production, use Netlify function.
+    const isDev = window.location.hostname === "localhost";
+    const res = await fetch(
+      isDev ? "/api/analyze" : "/.netlify/functions/analyze",
+      { method: "POST", body: formData }
+    );
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || `Analysis failed: ${res.status}`);
