@@ -71,7 +71,11 @@ export const api = {
     }
     formData.append("urls", JSON.stringify(urls));
 
-    const res = await fetch("/api/analyze", { method: "POST", body: formData });
+    // Try /api/analyze (Express dev server), fall back to Netlify function
+    let res = await fetch("/api/analyze", { method: "POST", body: formData }).catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch("/.netlify/functions/analyze", { method: "POST", body: formData });
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || `Analysis failed: ${res.status}`);
