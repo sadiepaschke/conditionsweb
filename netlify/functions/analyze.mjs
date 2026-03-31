@@ -98,7 +98,7 @@ Read the following documents carefully and produce a situational analysis coveri
 6. **Relationships visible between conditions**
 7. **What the documents don't cover** — gaps the conversation should explore
 
-Use plain language. Be specific. Quote the documents when useful.
+Use plain language. Be specific but concise — aim for 1-2 paragraphs per section. Quote the documents when useful. Do not over-elaborate.
 
 ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
@@ -106,13 +106,13 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: contentParts }],
-          generationConfig: { maxOutputTokens: 8000 },
+          generationConfig: { maxOutputTokens: 4000 },
         }),
       }
     );
