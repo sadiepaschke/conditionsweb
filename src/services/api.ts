@@ -71,18 +71,59 @@ export const api = {
     }
     formData.append("urls", JSON.stringify(urls));
 
-    // In dev, Vite proxies /api to Express. In production, use Netlify function.
+    // In dev, Vite proxies /api to Express (returns JSON).
+    // In production, Netlify function streams SSE events.
     const isDev = window.location.hostname === "localhost";
-    const res = await fetch(
-      isDev ? "/api/analyze" : "/.netlify/functions/analyze",
-      { method: "POST", body: formData }
-    );
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.error || `Analysis failed: ${res.status}`);
+
+    if (isDev) {
+      const res = await fetch("/api/analyze", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || `Analysis failed: ${res.status}`);
+      }
+      return res.json();
     }
-    // Streamed response may have keep-alive spaces before JSON
-    const text = await res.text();
-    return JSON.parse(text.trim());
+
+    // Production: read SSE stream from Netlify function
+    const res = await fetch("/.netlify/functions/analyze", { method: "POST", body: formData });
+    if (!res.ok) {
+      const text = await res.text();
+      try {
+        const err = JSON.parse(text);
+        throw new Error(err.error || `Analysis failed: ${res.status}`);
+      } catch {
+        throw new Error(`Analysis failed: ${res.status}`);
+      }
+    }
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let analysisText = "";
+    let meta: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "meta") {
+              meta = data;
+            } else {
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              analysisText += text;
+            }
+          } catch { /* skip */ }
+        }
+      }
+    }
+
+    return {
+      analysis: analysisText,
+      sources: meta ? { files: meta.files, urls: meta.urls } : { files: [], urls: [] },
+    };
   },
 };

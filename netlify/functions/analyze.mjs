@@ -97,7 +97,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
 
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
-    // Stream from Gemini and pipe back to client to avoid Netlify timeout
+    // Use Gemini streaming API
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
@@ -110,57 +110,35 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Create a TransformStream to collect chunks and build final JSON response
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
+    // Stream SSE events to the client as-is — client will reassemble
+    // Prepend metadata as first SSE event
+    const metaEvent = `data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`;
     const encoder = new TextEncoder();
 
-    // Process in background — collect all text then write final JSON
-    (async () => {
-      const reader = geminiResponse.body.getReader();
-      const decoder = new TextDecoder();
-      let analysisText = "";
+    const stream = new ReadableStream({
+      async start(controller) {
+        controller.enqueue(encoder.encode(metaEvent));
 
-      try {
-        // Send a space every few seconds to keep connection alive
-        const keepAlive = setInterval(() => {
-          writer.write(encoder.encode(" ")).catch(() => {});
-        }, 5000);
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                analysisText += text;
-              } catch { /* skip */ }
-            }
+        const reader = geminiResponse.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
           }
+        } finally {
+          controller.close();
         }
+      },
+    });
 
-        clearInterval(keepAlive);
-
-        const result = JSON.stringify({
-          analysis: analysisText,
-          sources: { files: fileNames, urls },
-        });
-        await writer.write(encoder.encode(result));
-      } catch (err) {
-        const errResult = JSON.stringify({ error: "Analysis failed: " + err.message });
-        await writer.write(encoder.encode(errResult));
-      } finally {
-        await writer.close();
-      }
-    })();
-
-    return new Response(readable, {
+    return new Response(stream, {
       status: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
   } catch (err) {
     return new Response(
@@ -171,4 +149,9 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
   }
+};
+
+export const config = {
+  // Enable streaming for this function
+  preferStatic: false,
 };
