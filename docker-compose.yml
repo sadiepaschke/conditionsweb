@@ -1,0 +1,20 @@
+services:
+  db:
+    image: apache/age:latest
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: conditions_web
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: conditions_web
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conditions_web"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
