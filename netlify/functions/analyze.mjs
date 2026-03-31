@@ -152,6 +152,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
 };
 
 export const config = {
-  // Enable streaming for this function
+  path: "/.netlify/functions/analyze",
   preferStatic: false,
+  stream: true,
 };
