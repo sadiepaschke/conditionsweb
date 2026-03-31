@@ -18,9 +18,10 @@ const TYPE_TO_DOMAIN: Record<string, Domain> = {
 
 // Match JSON block at the end of text — with or without --- separator
 const JSON_PATTERNS = [
-  /---\s*(\{[\s\S]*\})\s*$/,          // standard: --- followed by JSON
-  /\n(\{"conditions"[\s\S]*\})\s*$/,   // conditions JSON without ---
-  /\n(\{"nodes"[\s\S]*\})\s*$/,        // nodes JSON without ---
+  /---\s*(\{[\s\S]*\})\s*$/,              // standard: --- followed by JSON
+  /\n(\{"conditions"[\s\S]*\})\s*$/,       // conditions JSON without ---
+  /\n(\{"nodes"[\s\S]*\})\s*$/,            // nodes JSON without ---
+  /\n(\{"organization_name"[\s\S]*\})\s*$/, // onboarding+conditions JSON without ---
 ];
 
 export function parseWebData(text: string): WebData | null {
@@ -66,9 +67,10 @@ export function cleanMessage(text: string): string {
   for (const pattern of JSON_PATTERNS) {
     cleaned = cleaned.replace(pattern, "");
   }
-  // Also catch any trailing JSON that starts with {"conditions" or {"nodes"
+  // Also catch any trailing JSON that starts with known keys
   cleaned = cleaned.replace(/\n?\{"conditions"[\s\S]*$/, "");
   cleaned = cleaned.replace(/\n?\{"nodes"[\s\S]*$/, "");
+  cleaned = cleaned.replace(/\n?\{"organization_name"[\s\S]*$/, "");
   // Clean up trailing --- and whitespace
   cleaned = cleaned.replace(/\n---\s*$/, "");
   return cleaned.trim();
