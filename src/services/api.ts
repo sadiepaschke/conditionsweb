@@ -81,6 +81,8 @@ export const api = {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || `Analysis failed: ${res.status}`);
     }
-    return res.json();
+    // Streamed response may have keep-alive spaces before JSON
+    const text = await res.text();
+    return JSON.parse(text.trim());
   },
 };

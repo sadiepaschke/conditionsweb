@@ -17,15 +17,15 @@ export default async (req) => {
     const urlsRaw = formData.get("urls") || "[]";
     const urls = JSON.parse(urlsRaw);
 
-    // Use Gemini's native file handling — send files as inline data parts
     const parts = [];
+    const fileNames = [];
 
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer());
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      fileNames.push(file.name);
 
       if (ext === "pdf") {
-        // Send PDF as inline data to Gemini — it can read PDFs natively
         parts.push({
           inlineData: {
             mimeType: "application/pdf",
@@ -33,7 +33,6 @@ export default async (req) => {
           },
         });
       } else if (ext === "docx") {
-        // Send DOCX as inline data
         parts.push({
           inlineData: {
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -41,13 +40,11 @@ export default async (req) => {
           },
         });
       } else {
-        // Text files — send as text
         const text = buffer.toString("utf-8");
         parts.push({ text: `--- ${file.name} ---\n${text}\n` });
       }
     }
 
-    // Fetch URLs
     const urlTexts = [];
     for (const url of urls) {
       try {
@@ -63,12 +60,8 @@ export default async (req) => {
             .replace(/\s+/g, " ")
             .trim();
           urlTexts.push(`--- ${url} ---\n${stripped}\n`);
-        } else {
-          urlTexts.push(`--- ${url} ---\n[Failed to fetch: ${res.status}]\n`);
         }
-      } catch (e) {
-        urlTexts.push(`--- ${url} ---\n[Failed to fetch: ${e.message}]\n`);
-      }
+      } catch (e) { /* skip */ }
     }
 
     if (files.length === 0 && urls.length === 0) {
@@ -102,11 +95,11 @@ Use plain language. Be specific. Quote the documents when useful.
 
 ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
-    // Build content parts: prompt text + file data
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    // Stream from Gemini and pipe back to client to avoid Netlify timeout
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -117,31 +110,58 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    const data = await response.json();
-    console.log("Gemini response status:", response.status);
-    console.log("Gemini response data:", JSON.stringify(data).slice(0, 500));
-    const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    if (!analysis) {
-      console.error("No analysis text. Full response:", JSON.stringify(data));
-      return new Response(
-        JSON.stringify({ error: "Gemini returned no analysis. The document may be too large or unreadable.", debug: data }),
-        { status: 502, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    // Create a TransformStream to collect chunks and build final JSON response
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
 
-    return new Response(
-      JSON.stringify({
-        analysis,
-        sources: {
-          files: files.map((f) => f.name),
-          urls,
-        },
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
+    // Process in background — collect all text then write final JSON
+    (async () => {
+      const reader = geminiResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let analysisText = "";
+
+      try {
+        // Send a space every few seconds to keep connection alive
+        const keepAlive = setInterval(() => {
+          writer.write(encoder.encode(" ")).catch(() => {});
+        }, 5000);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                analysisText += text;
+              } catch { /* skip */ }
+            }
+          }
+        }
+
+        clearInterval(keepAlive);
+
+        const result = JSON.stringify({
+          analysis: analysisText,
+          sources: { files: fileNames, urls },
+        });
+        await writer.write(encoder.encode(result));
+      } catch (err) {
+        const errResult = JSON.stringify({ error: "Analysis failed: " + err.message });
+        await writer.write(encoder.encode(errResult));
+      } finally {
+        await writer.close();
       }
-    );
+    })();
+
+    return new Response(readable, {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (err) {
     return new Response(
       JSON.stringify({ error: "Analysis failed: " + err.message }),
