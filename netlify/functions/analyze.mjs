@@ -98,7 +98,7 @@ Read the following documents carefully and produce a situational analysis coveri
 6. **Relationships visible between conditions**
 7. **What the documents don't cover** — gaps the conversation should explore
 
-Use plain language. Be specific but concise — aim for 1-2 paragraphs per section. Quote the documents when useful. Do not over-elaborate.
+Use plain language. Be specific. Quote the documents when useful.
 
 ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
@@ -112,7 +112,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ role: "user", parts: contentParts }],
-          generationConfig: { maxOutputTokens: 4000 },
+          generationConfig: { maxOutputTokens: 8000 },
         }),
       }
     );
