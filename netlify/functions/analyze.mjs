@@ -106,7 +106,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +118,16 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
     );
 
     const data = await response.json();
+    console.log("Gemini response status:", response.status);
+    console.log("Gemini response data:", JSON.stringify(data).slice(0, 500));
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    if (!analysis) {
+      console.error("No analysis text. Full response:", JSON.stringify(data));
+      return new Response(
+        JSON.stringify({ error: "Gemini returned no analysis. The document may be too large or unreadable.", debug: data }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({
