@@ -1,7 +1,21 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse/lib/pdf-parse.js");
 const mammoth = require("mammoth");
+
+// pdf-parse has a bug where index.js tries to read a test file on import.
+// We lazy-load it inside the handler to catch and ignore that error.
+let pdfParse = null;
+async function getPdfParse() {
+  if (pdfParse) return pdfParse;
+  try {
+    pdfParse = require("pdf-parse");
+  } catch {
+    // If the test file error occurs, require the inner module directly
+    const mod = await import("pdf-parse");
+    pdfParse = mod.default || mod;
+  }
+  return pdfParse;
+}
 
 export default async (req) => {
   if (req.method !== "POST") {
@@ -32,7 +46,8 @@ export default async (req) => {
       try {
         console.log(`Processing file: ${file.name} (${ext}), buffer size: ${buffer.length}`);
         if (ext === "pdf") {
-          const data = await pdfParse(buffer);
+          const parsePdf = await getPdfParse();
+          const data = await parsePdf(buffer);
           console.log(`PDF extracted: ${data.text.length} chars`);
           textParts.push(`--- ${file.name} ---\n${data.text}\n`);
         } else if (ext === "docx") {
