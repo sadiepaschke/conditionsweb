@@ -20,7 +20,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   const simRef = useRef<d3.Simulation<ConditionNode, SimEdge> | null>(null);
   const nodesRef = useRef<ConditionNode[]>([]);
   const edgesRef = useRef<SimEdge[]>([]);
-  const [, forceRender] = useState(0);
+  const [renderCount, forceRender] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const prevNodeIds = useRef<Set<string>>(new Set());
   const newNodeIds = useRef<Set<string>>(new Set());
@@ -42,10 +42,10 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
     const height = 700;
 
     const simulation = d3.forceSimulation<ConditionNode>()
-      .force("link", d3.forceLink<ConditionNode, SimEdge>().id((d: any) => d.id).distance(160))
-      .force("charge", d3.forceManyBody().strength(-400))
+      .force("link", d3.forceLink<ConditionNode, SimEdge>().id((d: any) => d.id).distance(180))
+      .force("charge", d3.forceManyBody().strength(-500))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(65))
+      .force("collision", d3.forceCollide().radius(70))
       .on("tick", () => forceRender(n => n + 1));
 
     simRef.current = simulation;
@@ -128,6 +128,26 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   const simNodes = nodesRef.current;
   const simEdges = edgesRef.current;
 
+  // Auto-fit viewBox to contain all nodes with padding
+  const computedViewBox = useMemo(() => {
+    const positioned = simNodes.filter(n => n.x != null && n.y != null);
+    if (positioned.length === 0) return "0 0 900 700";
+    const padding = 100;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of positioned) {
+      const r = 50; // approximate node radius + label
+      if (n.x! - r < minX) minX = n.x! - r;
+      if (n.y! - r < minY) minY = n.y! - r;
+      if (n.x! + r > maxX) maxX = n.x! + r;
+      if (n.y! + r + 30 > maxY) maxY = n.y! + r + 30; // extra for labels below
+    }
+    const vbX = minX - padding;
+    const vbY = minY - padding;
+    const vbW = Math.max(maxX - minX + padding * 2, 400);
+    const vbH = Math.max(maxY - minY + padding * 2, 400);
+    return `${vbX} ${vbY} ${vbW} ${vbH}`;
+  }, [simNodes, renderCount]); // re-compute on tick
+
   // Determine if a node is visible based on filters
   const isNodeVisible = (node: ConditionNode) => {
     if (filteredDomains && !filteredDomains.has(node.domain)) return false;
@@ -172,7 +192,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   };
 
   return (
-    <svg ref={svgRef} viewBox="0 0 900 700" style={{ width: "100%", height: "100%" }}>
+    <svg ref={svgRef} viewBox={computedViewBox} style={{ width: "100%", height: "100%" }}>
       <defs>
         {Object.entries(EDGE_COLORS).map(([rel, color]) => (
           <marker
