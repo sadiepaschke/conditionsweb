@@ -1,22 +1,3 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const mammoth = require("mammoth");
-
-// pdf-parse has a bug where index.js tries to read a test file on import.
-// We lazy-load it inside the handler to catch and ignore that error.
-let pdfParse = null;
-async function getPdfParse() {
-  if (pdfParse) return pdfParse;
-  try {
-    pdfParse = require("pdf-parse");
-  } catch {
-    // If the test file error occurs, require the inner module directly
-    const mod = await import("pdf-parse");
-    pdfParse = mod.default || mod;
-  }
-  return pdfParse;
-}
-
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -36,36 +17,38 @@ export default async (req) => {
     const urlsRaw = formData.get("urls") || "[]";
     const urls = JSON.parse(urlsRaw);
 
-    const textParts = [];
+    // Use Gemini's native file handling — send files as inline data parts
+    const parts = [];
 
-    // Extract text from uploaded files
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer());
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
-      try {
-        console.log(`Processing file: ${file.name} (${ext}), buffer size: ${buffer.length}`);
-        if (ext === "pdf") {
-          const parsePdf = await getPdfParse();
-          const data = await parsePdf(buffer);
-          console.log(`PDF extracted: ${data.text.length} chars`);
-          textParts.push(`--- ${file.name} ---\n${data.text}\n`);
-        } else if (ext === "docx") {
-          const result = await mammoth.extractRawText({ buffer });
-          console.log(`DOCX extracted: ${result.value.length} chars`);
-          textParts.push(`--- ${file.name} ---\n${result.value}\n`);
-        } else {
-          const text = buffer.toString("utf-8");
-          console.log(`Text file: ${text.length} chars`);
-          textParts.push(`--- ${file.name} ---\n${text}\n`);
-        }
-      } catch (parseErr) {
-        console.error(`Failed to parse ${file.name}:`, parseErr.message);
-        textParts.push(`--- ${file.name} ---\n[Could not parse file: ${parseErr.message}]\n`);
+      if (ext === "pdf") {
+        // Send PDF as inline data to Gemini — it can read PDFs natively
+        parts.push({
+          inlineData: {
+            mimeType: "application/pdf",
+            data: buffer.toString("base64"),
+          },
+        });
+      } else if (ext === "docx") {
+        // Send DOCX as inline data
+        parts.push({
+          inlineData: {
+            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            data: buffer.toString("base64"),
+          },
+        });
+      } else {
+        // Text files — send as text
+        const text = buffer.toString("utf-8");
+        parts.push({ text: `--- ${file.name} ---\n${text}\n` });
       }
     }
 
     // Fetch URLs
+    const urlTexts = [];
     for (const url of urls) {
       try {
         const res = await fetch(url, {
@@ -79,31 +62,21 @@ export default async (req) => {
             .replace(/<[^>]+>/g, " ")
             .replace(/\s+/g, " ")
             .trim();
-          textParts.push(`--- ${url} ---\n${stripped}\n`);
+          urlTexts.push(`--- ${url} ---\n${stripped}\n`);
         } else {
-          textParts.push(`--- ${url} ---\n[Failed to fetch: ${res.status}]\n`);
+          urlTexts.push(`--- ${url} ---\n[Failed to fetch: ${res.status}]\n`);
         }
       } catch (e) {
-        textParts.push(`--- ${url} ---\n[Failed to fetch: ${e.message}]\n`);
+        urlTexts.push(`--- ${url} ---\n[Failed to fetch: ${e.message}]\n`);
       }
     }
 
-    // Cap total text to avoid Gemini timeout — 50K chars is plenty for analysis
-    const MAX_TEXT = 50000;
-    let combinedRaw = textParts.join("\n\n");
-    if (combinedRaw.length > MAX_TEXT) {
-      console.log(`Truncating from ${combinedRaw.length} to ${MAX_TEXT} chars`);
-      combinedRaw = combinedRaw.substring(0, MAX_TEXT) + "\n\n[... document truncated for analysis ...]";
-    }
-
-    if (textParts.length === 0) {
+    if (files.length === 0 && urls.length === 0) {
       return new Response(
-        JSON.stringify({ error: "No content could be extracted from the provided sources." }),
+        JSON.stringify({ error: "No files or URLs provided" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    const combinedText = combinedRaw;
 
     const analysisPrompt = `You are analyzing background documents for a social impact organization that is about to map its Conditions Web — a relational map of the conditions within which the organization and the people it serves exist.
 
@@ -127,11 +100,10 @@ Read the following documents carefully and produce a situational analysis coveri
 
 Use plain language. Be specific. Quote the documents when useful.
 
----
+${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
-DOCUMENTS:
-
-${combinedText}`;
+    // Build content parts: prompt text + file data
+    const contentParts = [{ text: analysisPrompt }, ...parts];
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -139,7 +111,7 @@ ${combinedText}`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: analysisPrompt }] }],
+          contents: [{ role: "user", parts: contentParts }],
           generationConfig: { maxOutputTokens: 8000 },
         }),
       }
@@ -155,7 +127,6 @@ ${combinedText}`;
           files: files.map((f) => f.name),
           urls,
         },
-        textLength: combinedText.length,
       }),
       {
         status: 200,
