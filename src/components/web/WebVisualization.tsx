@@ -130,7 +130,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
 
   // Auto-fit viewBox to contain all nodes with padding
   const computedViewBox = useMemo(() => {
-    const positioned = simNodes.filter(n => n.x != null && n.y != null);
+    const positioned = simNodes.filter(n => n.x != null && n.y != null && isFinite(n.x!) && isFinite(n.y!));
     if (positioned.length === 0) return "0 0 900 700";
     const padding = 100;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
