@@ -1,10 +1,6 @@
-// Accepts pre-uploaded file URIs and generates analysis
-// Files are uploaded separately via upload-file function
-export default async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
+import { stream } from "@netlify/functions";
 
+export default stream(async (req) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "API key not configured" }), {
@@ -14,7 +10,6 @@ export default async (req) => {
 
   try {
     const { files, urls = [] } = await req.json();
-    // files: [{ type: "file", name, uri, mimeType } | { type: "text", name, content }]
 
     const parts = [];
     const fileNames = [];
@@ -28,7 +23,6 @@ export default async (req) => {
       }
     }
 
-    // Fetch URLs
     const urlTexts = [];
     for (const url of urls) {
       try {
@@ -84,42 +78,34 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Stream response
     const metaEvent = `data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`;
     const encoder = new TextEncoder();
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        controller.enqueue(encoder.encode(metaEvent));
-        const reader = geminiResponse.body.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
+    return new Response(
+      new ReadableStream({
+        async start(controller) {
+          controller.enqueue(encoder.encode(metaEvent));
+          const reader = geminiResponse.body.getReader();
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+          } finally {
+            controller.close();
           }
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-      },
-    });
+        },
+      }),
+      {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }
+    );
   } catch (err) {
     return new Response(
       JSON.stringify({ error: "Analysis failed: " + err.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
-};
-
-export const config = {
-  path: "/.netlify/functions/analyze",
-  stream: true,
-};
+});
