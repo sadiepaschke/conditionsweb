@@ -1,10 +1,10 @@
 import { stream } from "@netlify/functions";
+import { Readable } from "stream";
 
-export default stream(async (event, { onChunk, onComplete, onError }) => {
+export default stream(async (event) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    onError(new Error("API key not configured"));
-    return;
+    return { statusCode: 500, body: JSON.stringify({ error: "API key not configured" }) };
   }
 
   try {
@@ -77,21 +77,38 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Send metadata chunk
-    onChunk(`data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`);
+    // Create a Node.js Readable stream that pipes Gemini's response
+    const nodeStream = new Readable({
+      read() {},
+    });
 
-    // Stream Gemini response chunks
-    const reader = geminiResponse.body.getReader();
-    const decoder = new TextDecoder();
+    // Push metadata first
+    nodeStream.push(`data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`);
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      onChunk(decoder.decode(value, { stream: true }));
-    }
+    // Pipe Gemini response chunks
+    (async () => {
+      const reader = geminiResponse.body.getReader();
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          nodeStream.push(decoder.decode(value, { stream: true }));
+        }
+      } finally {
+        nodeStream.push(null); // signal end
+      }
+    })();
 
-    onComplete();
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "text/event-stream" },
+      body: nodeStream,
+    };
   } catch (err) {
-    onError(err);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Analysis failed: " + err.message }),
+    };
   }
 });
