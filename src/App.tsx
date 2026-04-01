@@ -228,26 +228,23 @@ export default function App() {
         return;
       }
 
-      const parsed = parseWebData(fullText);
-      console.log("AI full text (last 500 chars):", fullText.slice(-500));
-      console.log("Parsed web data:", parsed ? `${parsed.nodes.length} nodes, ${parsed.edges.length} edges` : "NO JSON FOUND");
-      if (parsed) {
-        console.log("Node IDs:", parsed.nodes.map(n => n.id));
-        console.log("Edges:", parsed.edges.map(e => `${e.from} -> ${e.to} (${e.relationship})`));
-        const nodeIds = new Set(parsed.nodes.map(n => n.id));
-        const badEdges = parsed.edges.filter(e => !nodeIds.has(e.from) || !nodeIds.has(e.to));
-        if (badEdges.length) console.warn("BAD EDGES (reference missing nodes):", badEdges);
-        if (parsed.nodes.length > 0 && parsed.edges.length === 0) console.warn("NODES BUT NO EDGES - AI may not be emitting connections");
+      let parsed: any = null;
+      let clean = fullText;
+      try {
+        parsed = parseWebData(fullText);
+        clean = cleanMessage(fullText);
+      } catch (parseErr) {
+        console.error("Failed to parse web data:", parseErr);
+        clean = fullText.replace(/\n?\{[\s\S]*$/, "").trim() || fullText;
       }
       if (parsed) {
+        console.log("Parsed web data:", parsed.nodes.length, "nodes,", parsed.edges.length, "edges");
         setWebData(parsed);
         if (useExpressApi && webId) {
           api.syncConditions(webId, parsed.nodes, turnNumber).catch(() => {});
           api.syncConnections(webId, parsed.edges).catch(() => {});
         }
       }
-
-      const clean = cleanMessage(fullText);
       conversationHistory.current.push({ role: "model", parts: [{ text: fullText }] });
       setMessages(prev => [...prev, { role: "assistant", text: clean }]);
 
