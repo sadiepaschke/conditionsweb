@@ -1,15 +1,14 @@
 import { stream } from "@netlify/functions";
 
-export default stream(async (req) => {
+export default stream(async (event, { onChunk, onComplete, onError }) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "API key not configured" }), {
-      status: 500, headers: { "Content-Type": "application/json" },
-    });
+    onError(new Error("API key not configured"));
+    return;
   }
 
   try {
-    const { files, urls = [] } = await req.json();
+    const { files, urls = [] } = JSON.parse(event.body || "{}");
 
     const parts = [];
     const fileNames = [];
@@ -78,34 +77,21 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    const metaEvent = `data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`;
-    const encoder = new TextEncoder();
+    // Send metadata chunk
+    onChunk(`data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`);
 
-    return new Response(
-      new ReadableStream({
-        async start(controller) {
-          controller.enqueue(encoder.encode(metaEvent));
-          const reader = geminiResponse.body.getReader();
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              controller.enqueue(value);
-            }
-          } finally {
-            controller.close();
-          }
-        },
-      }),
-      {
-        status: 200,
-        headers: { "Content-Type": "text/event-stream" },
-      }
-    );
+    // Stream Gemini response chunks
+    const reader = geminiResponse.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      onChunk(decoder.decode(value, { stream: true }));
+    }
+
+    onComplete();
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Analysis failed: " + err.message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    onError(err);
   }
 });
