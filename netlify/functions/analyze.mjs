@@ -1,14 +1,19 @@
-import { stream } from "@netlify/functions";
-import { Readable } from "stream";
+// Non-streaming analyze function — collects full response then returns JSON
+// Uses Gemini File API URIs (pre-uploaded) for fast processing
+export default async (req) => {
+  if (req.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
 
-export default stream(async (event) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: "API key not configured" }) };
+    return new Response(JSON.stringify({ error: "API key not configured" }), {
+      status: 500, headers: { "Content-Type": "application/json" },
+    });
   }
 
   try {
-    const { files, urls = [] } = JSON.parse(event.body || "{}");
+    const { files, urls = [] } = await req.json();
 
     const parts = [];
     const fileNames = [];
@@ -65,8 +70,9 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
 
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
+    // Use non-streaming API since file URIs make processing much faster
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,38 +83,27 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Create a Node.js Readable stream that pipes Gemini's response
-    const nodeStream = new Readable({
-      read() {},
-    });
+    const data = await geminiResponse.json();
+    const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    // Push metadata first
-    nodeStream.push(`data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`);
+    if (!analysis) {
+      return new Response(
+        JSON.stringify({ error: "Gemini returned no analysis. Try again." }),
+        { status: 502, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    // Pipe Gemini response chunks
-    (async () => {
-      const reader = geminiResponse.body.getReader();
-      const decoder = new TextDecoder();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          nodeStream.push(decoder.decode(value, { stream: true }));
-        }
-      } finally {
-        nodeStream.push(null); // signal end
-      }
-    })();
-
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "text/event-stream" },
-      body: nodeStream,
-    };
+    return new Response(
+      JSON.stringify({
+        analysis,
+        sources: { files: fileNames, urls },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Analysis failed: " + err.message }),
-    };
+    return new Response(
+      JSON.stringify({ error: "Analysis failed: " + err.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
-});
+};

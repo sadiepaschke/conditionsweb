@@ -103,50 +103,12 @@ export const api = {
     if (!res.ok) {
       let errorMsg = `Analysis failed: ${res.status}`;
       try {
-        const text = await res.text();
-        const err = JSON.parse(text);
+        const err = await res.json();
         if (err.error) errorMsg = err.error;
       } catch { /* use default */ }
       throw new Error(errorMsg);
     }
 
-    // Handle SSE stream response
-    const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("text/event-stream") && res.body) {
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let analysisText = "";
-      let meta: any = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.type === "meta") {
-                meta = data;
-              } else {
-                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                analysisText += text;
-              }
-            } catch { /* skip */ }
-          }
-        }
-      }
-
-      if (!analysisText) throw new Error("Analysis returned empty. Try a smaller document.");
-      return {
-        analysis: analysisText,
-        sources: meta ? { files: meta.files, urls: meta.urls } : { files: [], urls: [] },
-      };
-    }
-
-    // Fallback: plain JSON
-    const text = await res.text();
-    return JSON.parse(text.trim());
+    return res.json();
   },
 };
