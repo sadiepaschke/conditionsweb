@@ -553,6 +553,31 @@ export default function App() {
                 </button>
               </>
             )}
+            {inChat && analysisText && (
+              <button
+                onClick={() => {
+                  const blob = new Blob([analysisText], { type: "text/markdown" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "situational-analysis.md";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                style={{
+                  background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+                  border: `1px solid ${t.border}`,
+                  color: t.textMuted, padding: "6px 12px",
+                  borderRadius: 20, fontSize: 11, cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                  transition: "all 0.2s",
+                }}
+              >
+                Analysis
+              </button>
+            )}
             <ThemeToggle dark={dark} setDark={setDark} />
           </div>
         </header>
