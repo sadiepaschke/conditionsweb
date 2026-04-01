@@ -1,3 +1,7 @@
+// Step 1: Upload file to Gemini File API
+// Step 2: Generate analysis using the file URI
+// Each step is fast enough for Netlify's timeout
+
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -17,34 +21,63 @@ export default async (req) => {
     const urlsRaw = formData.get("urls") || "[]";
     const urls = JSON.parse(urlsRaw);
 
-    const parts = [];
     const fileNames = [];
+    const fileParts = [];
 
+    // Upload each file to Gemini File API
     for (const file of files) {
       const buffer = Buffer.from(await file.arrayBuffer());
       const ext = file.name.split(".").pop()?.toLowerCase() || "";
       fileNames.push(file.name);
 
-      if (ext === "pdf") {
-        parts.push({
-          inlineData: {
-            mimeType: "application/pdf",
-            data: buffer.toString("base64"),
+      const mimeType = ext === "pdf" ? "application/pdf"
+        : ext === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : "text/plain";
+
+      if (ext === "txt" || ext === "md" || ext === "csv") {
+        // Small text files — send inline
+        fileParts.push({ text: `--- ${file.name} ---\n${buffer.toString("utf-8")}\n` });
+        continue;
+      }
+
+      // Upload to Gemini File API
+      const uploadRes = await fetch(
+        `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": mimeType,
+            "X-Goog-Upload-Command": "upload, finalize",
+            "X-Goog-Upload-Header-Content-Length": buffer.length.toString(),
+            "X-Goog-Upload-Header-Content-Type": mimeType,
+            "X-Goog-Upload-Protocol": "raw",
           },
+          body: buffer,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        console.error("File upload failed:", await uploadRes.text());
+        // Fallback to inline base64
+        fileParts.push({
+          inlineData: { mimeType, data: buffer.toString("base64") },
         });
-      } else if (ext === "docx") {
-        parts.push({
-          inlineData: {
-            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            data: buffer.toString("base64"),
-          },
-        });
+        continue;
+      }
+
+      const uploadData = await uploadRes.json();
+      const fileUri = uploadData.file?.uri;
+      if (fileUri) {
+        fileParts.push({ fileData: { mimeType, fileUri } });
       } else {
-        const text = buffer.toString("utf-8");
-        parts.push({ text: `--- ${file.name} ---\n${text}\n` });
+        // Fallback
+        fileParts.push({
+          inlineData: { mimeType, data: buffer.toString("base64") },
+        });
       }
     }
 
+    // Fetch URLs
     const urlTexts = [];
     for (const url of urls) {
       try {
@@ -95,9 +128,9 @@ Use plain language. Be specific. Quote the documents when useful.
 
 ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
-    const contentParts = [{ text: analysisPrompt }, ...parts];
+    const contentParts = [{ text: analysisPrompt }, ...fileParts];
 
-    // Use Gemini streaming API
+    // Generate analysis — use streaming to stay within timeout
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
@@ -110,15 +143,13 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Stream SSE events to the client as-is — client will reassemble
-    // Prepend metadata as first SSE event
+    // Stream SSE to client with metadata prefix
     const metaEvent = `data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`;
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
       async start(controller) {
         controller.enqueue(encoder.encode(metaEvent));
-
         const reader = geminiResponse.body.getReader();
         try {
           while (true) {
