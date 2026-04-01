@@ -1,7 +1,5 @@
-// Step 1: Upload file to Gemini File API
-// Step 2: Generate analysis using the file URI
-// Each step is fast enough for Netlify's timeout
-
+// Accepts pre-uploaded file URIs and generates analysis
+// Files are uploaded separately via upload-file function
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -10,70 +8,23 @@ export default async (req) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "API key not configured" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+      status: 500, headers: { "Content-Type": "application/json" },
     });
   }
 
   try {
-    const formData = await req.formData();
-    const files = formData.getAll("files");
-    const urlsRaw = formData.get("urls") || "[]";
-    const urls = JSON.parse(urlsRaw);
+    const { files, urls = [] } = await req.json();
+    // files: [{ type: "file", name, uri, mimeType } | { type: "text", name, content }]
 
+    const parts = [];
     const fileNames = [];
-    const fileParts = [];
 
-    // Upload each file to Gemini File API
-    for (const file of files) {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const ext = file.name.split(".").pop()?.toLowerCase() || "";
-      fileNames.push(file.name);
-
-      const mimeType = ext === "pdf" ? "application/pdf"
-        : ext === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        : "text/plain";
-
-      if (ext === "txt" || ext === "md" || ext === "csv") {
-        // Small text files — send inline
-        fileParts.push({ text: `--- ${file.name} ---\n${buffer.toString("utf-8")}\n` });
-        continue;
-      }
-
-      // Upload to Gemini File API
-      const uploadRes = await fetch(
-        `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": mimeType,
-            "X-Goog-Upload-Command": "upload, finalize",
-            "X-Goog-Upload-Header-Content-Length": buffer.length.toString(),
-            "X-Goog-Upload-Header-Content-Type": mimeType,
-            "X-Goog-Upload-Protocol": "raw",
-          },
-          body: buffer,
-        }
-      );
-
-      if (!uploadRes.ok) {
-        console.error("File upload failed:", await uploadRes.text());
-        // Fallback to inline base64
-        fileParts.push({
-          inlineData: { mimeType, data: buffer.toString("base64") },
-        });
-        continue;
-      }
-
-      const uploadData = await uploadRes.json();
-      const fileUri = uploadData.file?.uri;
-      if (fileUri) {
-        fileParts.push({ fileData: { mimeType, fileUri } });
-      } else {
-        // Fallback
-        fileParts.push({
-          inlineData: { mimeType, data: buffer.toString("base64") },
-        });
+    for (const f of files) {
+      fileNames.push(f.name);
+      if (f.type === "text") {
+        parts.push({ text: `--- ${f.name} ---\n${f.content}\n` });
+      } else if (f.uri) {
+        parts.push({ fileData: { mimeType: f.mimeType, fileUri: f.uri } });
       }
     }
 
@@ -81,9 +32,7 @@ export default async (req) => {
     const urlTexts = [];
     for (const url of urls) {
       try {
-        const res = await fetch(url, {
-          headers: { "User-Agent": "ConditionsWeb/1.0" },
-        });
+        const res = await fetch(url, { headers: { "User-Agent": "ConditionsWeb/1.0" } });
         if (res.ok) {
           const body = await res.text();
           const stripped = body
@@ -95,13 +44,6 @@ export default async (req) => {
           urlTexts.push(`--- ${url} ---\n${stripped}\n`);
         }
       } catch (e) { /* skip */ }
-    }
-
-    if (files.length === 0 && urls.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "No files or URLs provided" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
     }
 
     const analysisPrompt = `You are analyzing background documents for a social impact organization that is about to map its Conditions Web — a relational map of the conditions within which the organization and the people it serves exist.
@@ -128,9 +70,8 @@ Use plain language. Be specific. Quote the documents when useful.
 
 ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`;
 
-    const contentParts = [{ text: analysisPrompt }, ...fileParts];
+    const contentParts = [{ text: analysisPrompt }, ...parts];
 
-    // Generate analysis — use streaming to stay within timeout
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
       {
@@ -143,7 +84,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       }
     );
 
-    // Stream SSE to client with metadata prefix
+    // Stream response
     const metaEvent = `data: ${JSON.stringify({ type: "meta", files: fileNames, urls })}\n\n`;
     const encoder = new TextEncoder();
 
@@ -168,22 +109,17 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
       },
     });
   } catch (err) {
     return new Response(
       JSON.stringify({ error: "Analysis failed: " + err.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 };
 
 export const config = {
   path: "/.netlify/functions/analyze",
-  preferStatic: false,
   stream: true,
 };

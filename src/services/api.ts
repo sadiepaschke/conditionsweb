@@ -63,19 +63,15 @@ export const api = {
   generateDeliverable: (webId: string, type: "narrative" | "toc" | "logic-model" | "checklist") =>
     request(`/webs/${webId}/deliverables/${type}`, { method: "POST" }),
 
-  // Document analysis
+  // Document analysis — two-step: upload files, then analyze
   analyze: async (files: File[], urls: string[]) => {
-    const formData = new FormData();
-    for (const file of files) {
-      formData.append("files", file);
-    }
-    formData.append("urls", JSON.stringify(urls));
-
-    // In dev, Vite proxies /api to Express (returns JSON).
-    // In production, Netlify function streams SSE events.
     const isDev = window.location.hostname === "localhost";
 
+    // In dev, use Express API directly
     if (isDev) {
+      const formData = new FormData();
+      for (const file of files) formData.append("files", file);
+      formData.append("urls", JSON.stringify(urls));
       const res = await fetch("/api/analyze", { method: "POST", body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
@@ -84,8 +80,26 @@ export const api = {
       return res.json();
     }
 
-    // Production: read SSE stream from Netlify function
-    const res = await fetch("/.netlify/functions/analyze", { method: "POST", body: formData });
+    // Production: Step 1 — upload each file via upload-file function
+    const uploadedFiles = [];
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/.netlify/functions/upload-file", {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`Failed to upload ${file.name}`);
+      uploadedFiles.push(await res.json());
+    }
+
+    // Step 2 — call analyze with file URIs (JSON, no formData)
+    const res = await fetch("/.netlify/functions/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files: uploadedFiles, urls }),
+    });
+
     if (!res.ok) {
       let errorMsg = `Analysis failed: ${res.status}`;
       try {
@@ -96,9 +110,8 @@ export const api = {
       throw new Error(errorMsg);
     }
 
-    // Handle both SSE stream and plain JSON responses
+    // Handle SSE stream response
     const contentType = res.headers.get("content-type") || "";
-
     if (contentType.includes("text/event-stream") && res.body) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -126,14 +139,13 @@ export const api = {
       }
 
       if (!analysisText) throw new Error("Analysis returned empty. Try a smaller document.");
-
       return {
         analysis: analysisText,
         sources: meta ? { files: meta.files, urls: meta.urls } : { files: [], urls: [] },
       };
     }
 
-    // Fallback: plain JSON response
+    // Fallback: plain JSON
     const text = await res.text();
     return JSON.parse(text.trim());
   },
