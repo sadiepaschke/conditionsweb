@@ -197,7 +197,7 @@ export default function App() {
       const chatPayload = {
         system_instruction: { parts: [{ text: systemPromptRef.current }] },
         contents: conversationHistory.current,
-        generationConfig: { maxOutputTokens: 4000 },
+        generationConfig: { maxOutputTokens: 8000 },
       };
 
       let data: any;
