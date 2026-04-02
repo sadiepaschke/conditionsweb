@@ -21,7 +21,7 @@ import type { Message, WebData, Domain } from "./types";
 import type { WebScope } from "./types/onboarding";
 
 type AppScreen = "start" | "litreview" | "analysis" | "chat";
-type RightPanel = "web" | "edit" | "deliverables";
+type RightPanel = "web" | "edit" | "deliverables" | "analysis";
 
 const ALL_DOMAINS: Domain[] = [
   "historical", "situational", "population", "community",
@@ -573,21 +573,12 @@ export default function App() {
             )}
             {inChat && analysisText && (
               <button
-                onClick={() => {
-                  const blob = new Blob([analysisText], { type: "text/markdown" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "situational-analysis.md";
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                }}
+                onClick={() => setRightPanel(rightPanel === "analysis" ? "web" : "analysis")}
                 style={{
-                  background: dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-                  border: `1px solid ${t.border}`,
-                  color: t.textMuted, padding: "6px 12px",
+                  background: rightPanel === "analysis" ? `${t.gold}18` : (dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"),
+                  border: `1px solid ${rightPanel === "analysis" ? t.borderAccent : t.border}`,
+                  color: rightPanel === "analysis" ? t.gold : t.textMuted,
+                  padding: "6px 12px",
                   borderRadius: 20, fontSize: 11, cursor: "pointer",
                   fontFamily: "'DM Sans', sans-serif",
                   transition: "all 0.2s",
@@ -780,6 +771,62 @@ export default function App() {
                   dark={dark}
                   onClose={() => setRightPanel("web")}
                 />
+              ) : rightPanel === "analysis" ? (
+                <div style={{
+                  flex: 1, overflow: "auto", padding: "24px 28px",
+                  display: "flex", flexDirection: "column",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, color: t.text }}>
+                      Situational Analysis
+                    </h2>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([analysisText || ""], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "situational-analysis.md";
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                        style={{
+                          padding: "5px 14px", fontSize: 11, borderRadius: 6,
+                          background: "transparent", border: `1px solid ${t.border}`,
+                          color: t.textMuted, cursor: "pointer",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Download
+                      </button>
+                      <button
+                        onClick={() => setRightPanel("web")}
+                        style={{
+                          padding: "5px 14px", fontSize: 11, borderRadius: 6,
+                          background: "transparent", border: `1px solid ${t.border}`,
+                          color: t.textMuted, cursor: "pointer",
+                          fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14, lineHeight: 1.8, color: t.text }}>
+                    <Markdown components={{
+                      h1: ({ children }) => <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 20, color: t.text, marginTop: 24, marginBottom: 10 }}>{children}</h1>,
+                      h2: ({ children }) => <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 17, color: t.text, marginTop: 20, marginBottom: 8 }}>{children}</h2>,
+                      h3: ({ children }) => <h3 style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 600, color: t.gold, marginTop: 16, marginBottom: 6 }}>{children}</h3>,
+                      p: ({ children }) => <p style={{ marginBottom: 10 }}>{children}</p>,
+                      ul: ({ children }) => <ul style={{ paddingLeft: 18, marginBottom: 10 }}>{children}</ul>,
+                      li: ({ children }) => <li style={{ marginBottom: 4, lineHeight: 1.7 }}>{children}</li>,
+                      strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                    }}>{analysisText || ""}</Markdown>
+                  </div>
+                </div>
               ) : rightPanel === "edit" ? (
                 <ConditionEditor
                   dark={dark}

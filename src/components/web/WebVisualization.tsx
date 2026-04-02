@@ -36,31 +36,16 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   }, [edges]);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !nodes.length) return;
 
     const width = 900;
     const height = 700;
 
-    const simulation = d3.forceSimulation<ConditionNode>()
-      .force("link", d3.forceLink<ConditionNode, SimEdge>().id((d: any) => d.id).distance(180))
-      .force("charge", d3.forceManyBody().strength(-500))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(70))
-      .on("tick", () => forceRender(n => n + 1));
-
-    simRef.current = simulation;
-    return () => { simulation.stop(); };
-  }, []);
-
-  useEffect(() => {
-    if (!simRef.current || !nodes.length) return;
-
-    const simulation = simRef.current;
+    // Merge with existing positioned nodes
     const oldMap: Record<string, ConditionNode> = {};
     nodesRef.current.forEach(n => { oldMap[n.id] = n; });
 
     const incoming = new Set<string>();
-
     const mergedNodes = nodes.map(n => {
       if (oldMap[n.id]) {
         oldMap[n.id].label = n.label;
@@ -72,8 +57,8 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
       incoming.add(n.id);
       return {
         ...n,
-        x: 450 + (Math.random() - 0.5) * 150,
-        y: 350 + (Math.random() - 0.5) * 150,
+        x: width / 2 + (Math.random() - 0.5) * 150,
+        y: height / 2 + (Math.random() - 0.5) * 150,
       };
     });
 
@@ -89,14 +74,26 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
     nodesRef.current = mergedNodes;
     edgesRef.current = mergedEdges;
 
-    simulation.nodes(mergedNodes);
-    (simulation.force("link") as d3.ForceLink<ConditionNode, SimEdge>).links(mergedEdges);
-    simulation.alpha(0.3).restart();
+    // Stop old simulation
+    if (simRef.current) simRef.current.stop();
+
+    // Create fresh simulation with nodes
+    const simulation = d3.forceSimulation<ConditionNode>(mergedNodes)
+      .force("link", d3.forceLink<ConditionNode, SimEdge>(mergedEdges).id((d: any) => d.id).distance(180))
+      .force("charge", d3.forceManyBody().strength(-500))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collision", d3.forceCollide().radius(70))
+      .alpha(0.5)
+      .on("tick", () => forceRender(n => n + 1));
+
+    simRef.current = simulation;
 
     setTimeout(() => {
       newNodeIds.current = new Set();
       forceRender(n => n + 1);
     }, 800);
+
+    return () => { simulation.stop(); };
   }, [nodes, edges]);
 
   const t = dark ? THEME.dark : THEME.light;
