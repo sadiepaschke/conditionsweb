@@ -17,12 +17,15 @@ const WARM_RELS = new Set(["enables", "amplifies", "produces", "maintains", "add
 
 export default function WebVisualization({ nodes, edges, dark, filteredDomains, selectedSubpop }: WebVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
   const simRef = useRef<d3.Simulation<ConditionNode, SimEdge> | null>(null);
   const nodesRef = useRef<ConditionNode[]>([]);
   const edgesRef = useRef<SimEdge[]>([]);
   const [renderCount, forceRender] = useState(0);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const prevNodeIds = useRef<Set<string>>(new Set());
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const [transform, setTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity);
   const newNodeIds = useRef<Set<string>>(new Set());
 
   // Compute connection counts for node sizing (generative density)
@@ -95,6 +98,20 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
 
     return () => { simulation.stop(); };
   }, [nodes, edges]);
+
+  // Set up zoom behavior
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.2, 4])
+      .on("zoom", (event) => {
+        setTransform(event.transform);
+      });
+    svg.call(zoom);
+    zoomRef.current = zoom;
+    return () => { svg.on(".zoom", null); };
+  }, []);
 
   const t = dark ? THEME.dark : THEME.light;
 
@@ -190,7 +207,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   };
 
   return (
-    <svg ref={svgRef} viewBox={computedViewBox} style={{ width: "100%", height: "100%" }}>
+    <svg ref={svgRef} viewBox={computedViewBox} style={{ width: "100%", height: "100%", cursor: "grab" }}>
       <defs>
         {Object.entries(EDGE_COLORS).map(([rel, color]) => (
           <marker
@@ -220,6 +237,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
         </filter>
       </defs>
 
+      <g ref={gRef} transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
       {simEdges.map((edge, i) => {
         const path = getEdgePath(edge);
         const rel = edge.relationship as string;
@@ -323,6 +341,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
           </g>
         );
       })}
+      </g>
     </svg>
   );
 }
