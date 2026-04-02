@@ -878,8 +878,45 @@ export default function App() {
                       <div style={{
                         fontSize: 11, color: t.textDim,
                         padding: "8px 24px 4px", textAlign: "center",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 12,
                       }}>
-                        {webData.nodes.length} conditions · {webData.edges.length} relationships
+                        <span>{webData.nodes.length} conditions · {webData.edges.length} relationships</span>
+                        <button
+                          onClick={() => {
+                            const svg = document.querySelector("svg");
+                            if (!svg) return;
+                            const clone = svg.cloneNode(true) as SVGSVGElement;
+                            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+                            // Add dark background
+                            const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                            bg.setAttribute("width", "100%");
+                            bg.setAttribute("height", "100%");
+                            bg.setAttribute("fill", dark ? "#0e0d0a" : "#faf8f2");
+                            clone.insertBefore(bg, clone.firstChild);
+                            const data = new XMLSerializer().serializeToString(clone);
+                            const img = new Image();
+                            img.onload = () => {
+                              const canvas = document.createElement("canvas");
+                              canvas.width = img.width * 2;
+                              canvas.height = img.height * 2;
+                              const ctx = canvas.getContext("2d")!;
+                              ctx.scale(2, 2);
+                              ctx.drawImage(img, 0, 0);
+                              const a = document.createElement("a");
+                              a.download = "conditions-web.png";
+                              a.href = canvas.toDataURL("image/png");
+                              a.click();
+                            };
+                            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(data)));
+                          }}
+                          style={{
+                            background: "none", border: `1px solid ${t.border}`,
+                            color: t.textDim, padding: "2px 8px", borderRadius: 4,
+                            fontSize: 10, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          PNG
+                        </button>
                       </div>
                       {currentScope === "program" && orgWebData.nodes.length > 0 && (
                         <CrossWebIndicator

@@ -134,6 +134,11 @@ export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose
           strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
           blockquote: ({ children }) => <blockquote style={{ borderLeft: `3px solid ${t.gold}`, paddingLeft: 14, color: t.textMuted, fontStyle: "italic", margin: "10px 0" }}>{children}</blockquote>,
           hr: () => <hr style={{ border: "none", borderTop: `1px solid ${t.border}`, margin: "16px 0" }} />,
+          table: ({ children }) => <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginBottom: 16 }}>{children}</table>,
+          thead: ({ children }) => <thead style={{ background: `${t.gold}15` }}>{children}</thead>,
+          th: ({ children }) => <th style={{ padding: "8px 10px", textAlign: "left", borderBottom: `2px solid ${t.border}`, color: t.gold, fontSize: 11, fontWeight: 600 }}>{children}</th>,
+          td: ({ children }) => <td style={{ padding: "6px 10px", borderBottom: `1px solid ${t.border}`, color: t.text, fontSize: 12, lineHeight: 1.5 }}>{children}</td>,
+          tr: ({ children }) => <tr style={{ transition: "background 0.15s" }}>{children}</tr>,
         }}>
           {data.content}
         </Markdown>
