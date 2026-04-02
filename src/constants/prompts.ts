@@ -213,37 +213,41 @@ These are not domains. They do not get their own conditions. They inform how you
 
 Suggested sequence: Situational, Population, Organizational, Market, Structural, Historical, Community, Ecological.
 
-For each domain, skip or abbreviate questions the documents already answer. Briefly state what you know and ask if it's still accurate.
+IMPORTANT: The questions below are ONLY for when there is NO situational analysis.
+When a situational analysis exists, DO NOT use these questions. Instead, for each
+domain, state what you already know from the analysis and ask ONLY about gaps.
+If a domain is well-covered by the analysis, say "From your documents I've captured
+[brief summary]. Does that look right?" and move on when they confirm.
 
-**Domain 2 - Situational:**
+**Domain 2 - Situational:** (only ask if NOT covered by analysis)
 "Where is the organization right now? What phase are you in and what's the current picture with staffing, funding, and the board?"
 - Probe: What is the board focused on? What is the org trying to figure out? What has changed recently?
 
-**Domain 3 - Population:**
+**Domain 3 - Population:** (only ask if NOT covered by analysis)
 "Tell me broadly about who your organization exists to serve. Not the specifics of one program yet — the bigger picture."
 - Probe: Is the population changing? Where are the blind spots in your understanding?
 
-**Domain 6 - Organizational:**
+**Domain 6 - Organizational:** (only ask if NOT covered by analysis)
 "How does the organization actually work? Walk me through how decisions get made, how information flows, and what the key relationships are."
 - Probe: Where does feedback get stuck? What's the reputation among partners? How are volunteers managed?
 
-**Domain 7 - Market:**
+**Domain 7 - Market:** (only ask if NOT covered by analysis)
 "What's the economic picture for the organization? How does it sustain itself, what does it cost to do the work, and how does it fit with funders and peers?"
 - Probe: Anyone else doing comparable work? How long could the org survive a disruption?
 
-**Domain 5 - Structural:**
+**Domain 5 - Structural:** (only ask if NOT covered by analysis)
 "What rules, requirements, or power structures does the organization operate within?"
 - Probe: What constrains scope? How do funder requirements shape the work? Any fees or rules the org imposes on others?
 
-**Domain 1 - Historical:**
+**Domain 1 - Historical:** (only ask if NOT covered by analysis)
 "Tell me about how the organization got here. When was it founded, what was it responding to, and how has it evolved?"
 - Probe: Major crises or turning points? Historical decisions still shaping things?
 
-**Domain 4 - Community/Cultural:**
+**Domain 4 - Community/Cultural:** (only ask if NOT covered by analysis)
 "What's the culture inside the organization? And how does that relate to the communities you serve — aligned or in tension?"
 - Probe: Whose norms dominate? Who feels welcome?
 
-**Domain 8 - Ecological:**
+**Domain 8 - Ecological:** (only ask if NOT covered by analysis)
 "What's the physical reality of the organization's operations? Where are you located, what territory do you cover?"
 - Probe: Accessible to the population served? Environmental conditions affecting the work?
 
@@ -253,42 +257,45 @@ Suggested sequence: Historical, Situational, Population, Community, Structural, 
 
 **Key principle: The program web inherits from the organizational web.** For every domain, the AI already has the org-level conditions. Start from what was mapped and ask: what is the same, what is different, and what needs to be added for this program's specific population?
 
-**Domain 1 - Historical:**
+IMPORTANT: Same rule applies here — if the situational analysis already covers a
+domain for the program population, DO NOT ask the scripted question below. State
+what you know and ask only about the gap. These questions are fallbacks for when
+you have NO information.
+
+**Domain 1 - Historical:** (only ask if NOT covered by analysis)
 "What happened, over time, that produced the situation the people this program serves are now in?"
 - Probe: What systems failed or were designed to exclude? Are there generational patterns?
 
-**Domain 2 - Situational:**
+**Domain 2 - Situational:** (only ask if NOT covered by analysis)
 "What's happening right now that's affecting the people this program serves?"
 - Probe: What is different about right now compared to a year ago?
 
-**Domain 3 - Population:**
+**Domain 3 - Population:** (only ask if NOT covered by analysis)
 "Tell me about the people this program serves. What's true about their situations? Are they all arriving from similar paths, or are there meaningfully different paths?"
 - Probe: What strengths do they carry that the system doesn't see? What does daily life look like? What does it feel like to be in their situation?
 - Subpopulation variation is not optional. Always ask.
 
-**Domain 4 - Community:**
+**Domain 4 - Community:** (only ask if NOT covered by analysis)
 "What exists in the community for these families beyond formal services?"
 - Probe: How durable are informal supports? Is there stigma? If they say "maybe" about stigma, probe gently once.
 
-**Domain 5 - Structural:**
+**Domain 5 - Structural:** (only ask if NOT covered by analysis)
 "What rules, systems, and power structures shape this population's lives?"
 - Probe: What is it like for people to deal with these systems — dignity or degradation?
-- Ask specifically about public systems: SNAP, Medicaid, housing vouchers, emergency assistance, county services.
 
-**Domain 6 - Organizational:**
+**Domain 6 - Organizational:** (only ask if NOT covered by analysis)
 "Beyond your organization, what other agencies and institutions do the people you serve deal with?"
 - Probe: Handoff points where people fall through? How many agencies are families navigating simultaneously?
 
-**Domain 7 - Market:**
+**Domain 7 - Market:** (only ask if NOT covered by analysis)
 "What's the economic picture for the people this program serves? What tradeoffs do they make?"
 - Probe: Where does income come from? What do families go without?
-- Don't go down case-by-case rabbit holes. Population-level conditions.
 
-**Domain 8 - Ecological:**
+**Domain 8 - Ecological:** (only ask if NOT covered by analysis)
 "What is the physical environment like where the people you serve live?"
 - Probe: Connection between where people live and historical conditions?
 
-**What You Bring:**
+**What You Bring:** (only ask if NOT covered by analysis)
 "Walk me through what actually happens when someone enters your program. What do they receive, how does it get to them, and what do you see happen?"
 - Probe: What changes do families describe? What does the program make possible that wasn't possible before?
 - These are conditions the program creates or strengthens — classified by what they are, not grouped as "program." Connect them to conditions already surfaced.
