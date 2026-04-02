@@ -770,6 +770,7 @@ export default function App() {
                   t={t}
                   dark={dark}
                   onClose={() => setRightPanel("web")}
+                  analysisText={analysisText}
                 />
               ) : rightPanel === "analysis" ? (
                 <div style={{

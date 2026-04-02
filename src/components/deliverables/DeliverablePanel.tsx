@@ -11,16 +11,67 @@ interface DeliverablePanelProps {
   t: ThemeTokens;
   dark: boolean;
   onClose: () => void;
+  analysisText?: string | null;
 }
 
 const TABS: { key: DeliverableType; label: string }[] = [
-  { key: "narrative", label: "Narrative" },
-  { key: "toc", label: "Theory of Change" },
+  { key: "narrative", label: "Situational Analysis" },
+  { key: "toc", label: "Conditions Web" },
   { key: "logic-model", label: "Logic Model" },
   { key: "checklist", label: "Review Checklist" },
 ];
 
-export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose }: DeliverablePanelProps) {
+function downloadAsWord(text: string, filename: string) {
+  const html = text
+    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/^- (.*$)/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Calibri',sans-serif;font-size:11pt;line-height:1.6;max-width:7in;margin:0.5in auto}h1{font-size:18pt;color:#333}h2{font-size:14pt;color:#444}h3{font-size:12pt;color:#7a5f15}ul{margin:6pt 0;padding-left:20pt}li{margin:3pt 0}</style></head><body><p>${html}</p></body></html>`;
+  const blob = new Blob([doc], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function downloadWebAsPng(dark: boolean) {
+  const svg = document.querySelector("svg");
+  if (!svg) return;
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("width", "100%");
+  bg.setAttribute("height", "100%");
+  bg.setAttribute("fill", dark ? "#0e0d0a" : "#faf8f2");
+  clone.insertBefore(bg, clone.firstChild);
+  const data = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width * 2;
+    canvas.height = img.height * 2;
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(2, 2);
+    ctx.drawImage(img, 0, 0);
+    const a = document.createElement("a");
+    a.download = "conditions-web.png";
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+  img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(data)));
+}
+
+export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose, analysisText }: DeliverablePanelProps) {
   const [activeTab, setActiveTab] = useState<DeliverableType>("narrative");
   const [content, setContent] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
@@ -66,7 +117,10 @@ export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose
 
   const handleTabClick = (type: DeliverableType) => {
     setActiveTab(type);
-    generate(type);
+    // Narrative and TOC don't need generation — they use existing data
+    if (type !== "narrative" && type !== "toc") {
+      generate(type);
+    }
   };
 
   const handleCopy = () => {
@@ -81,6 +135,56 @@ export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose
   };
 
   const renderContent = () => {
+    // Narrative tab = Situational Analysis download
+    if (activeTab === "narrative") {
+      return (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          {analysisText ? (
+            <>
+              <p style={{ color: t.textMuted, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+                Download the situational analysis as a Word document.
+              </p>
+              <button
+                onClick={() => downloadAsWord(analysisText, "situational-analysis.doc")}
+                style={{
+                  padding: "12px 28px", fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+                  background: "transparent", border: `1px solid ${t.borderAccent}`,
+                  color: t.gold, borderRadius: 8, cursor: "pointer",
+                }}
+              >
+                Download .doc
+              </button>
+            </>
+          ) : (
+            <p style={{ color: t.textMuted, fontSize: 13 }}>
+              No situational analysis available. Upload documents to generate one.
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    // TOC tab = Conditions Web as PNG
+    if (activeTab === "toc") {
+      return (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <p style={{ color: t.textMuted, fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+            Download the conditions web as a PNG image.
+          </p>
+          <button
+            onClick={() => downloadWebAsPng(dark)}
+            style={{
+              padding: "12px 28px", fontSize: 13, fontFamily: "'DM Sans', sans-serif",
+              background: "transparent", border: `1px solid ${t.borderAccent}`,
+              color: t.gold, borderRadius: 8, cursor: "pointer",
+            }}
+          >
+            Download .png
+          </button>
+        </div>
+      );
+    }
+
     if (loading[activeTab]) {
       return (
         <div style={{ textAlign: "center", padding: 40 }}>
