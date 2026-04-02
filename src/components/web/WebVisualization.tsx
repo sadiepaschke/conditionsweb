@@ -101,6 +101,30 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
 
   const t = dark ? THEME.dark : THEME.light;
 
+  const simNodes = nodesRef.current;
+  const simEdges = edgesRef.current;
+
+  // Auto-fit viewBox to contain all nodes with padding
+  // MUST be before any early returns to satisfy React's rules of hooks
+  const computedViewBox = useMemo(() => {
+    const positioned = simNodes.filter(n => n.x != null && n.y != null && isFinite(n.x!) && isFinite(n.y!));
+    if (positioned.length === 0) return "0 0 900 700";
+    const padding = 100;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of positioned) {
+      const r = 50;
+      if (n.x! - r < minX) minX = n.x! - r;
+      if (n.y! - r < minY) minY = n.y! - r;
+      if (n.x! + r > maxX) maxX = n.x! + r;
+      if (n.y! + r + 30 > maxY) maxY = n.y! + r + 30;
+    }
+    const vbX = minX - padding;
+    const vbY = minY - padding;
+    const vbW = Math.max(maxX - minX + padding * 2, 400);
+    const vbH = Math.max(maxY - minY + padding * 2, 400);
+    return `${vbX} ${vbY} ${vbW} ${vbH}`;
+  }, [simNodes, renderCount]);
+
   if (!nodes.length) {
     return (
       <div style={{
@@ -124,29 +148,6 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
       </div>
     );
   }
-
-  const simNodes = nodesRef.current;
-  const simEdges = edgesRef.current;
-
-  // Auto-fit viewBox to contain all nodes with padding
-  const computedViewBox = useMemo(() => {
-    const positioned = simNodes.filter(n => n.x != null && n.y != null && isFinite(n.x!) && isFinite(n.y!));
-    if (positioned.length === 0) return "0 0 900 700";
-    const padding = 100;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const n of positioned) {
-      const r = 50; // approximate node radius + label
-      if (n.x! - r < minX) minX = n.x! - r;
-      if (n.y! - r < minY) minY = n.y! - r;
-      if (n.x! + r > maxX) maxX = n.x! + r;
-      if (n.y! + r + 30 > maxY) maxY = n.y! + r + 30; // extra for labels below
-    }
-    const vbX = minX - padding;
-    const vbY = minY - padding;
-    const vbW = Math.max(maxX - minX + padding * 2, 400);
-    const vbH = Math.max(maxY - minY + padding * 2, 400);
-    return `${vbX} ${vbY} ${vbW} ${vbH}`;
-  }, [simNodes, renderCount]); // re-compute on tick
 
   // Determine if a node is visible based on filters
   const isNodeVisible = (node: ConditionNode) => {
