@@ -78,8 +78,13 @@ export default function App() {
   const subpopulations = useMemo(() => {
     const subs = new Set<string>();
     for (const node of webData.nodes) {
-      if (node.subpopulation) {
-        for (const sp of node.subpopulation) subs.add(sp);
+      if (Array.isArray(node.subpopulation)) {
+        for (const sp of node.subpopulation) {
+          // Handle both string and object formats
+          if (typeof sp === "string") subs.add(sp);
+          else if (sp && typeof sp === "object" && sp.label) subs.add(String(sp.label));
+          else if (sp && typeof sp === "object" && sp.id) subs.add(String(sp.id));
+        }
       }
     }
     return Array.from(subs);
@@ -246,7 +251,8 @@ export default function App() {
         }
       }
       conversationHistory.current.push({ role: "model", parts: [{ text: fullText }] });
-      setMessages(prev => [...prev, { role: "assistant", text: clean }]);
+      const safeClean = typeof clean === "string" ? clean : String(clean || "");
+      setMessages(prev => [...prev, { role: "assistant", text: safeClean }]);
 
       if (useExpressApi && webId) {
         turnCountRef.current++;
