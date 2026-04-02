@@ -247,11 +247,11 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
       })}
 
       {simNodes.map(node => {
-        if (node.x == null) return null;
+        if (node.x == null || !node.label) return null;
         const colors = NODE_COLORS[node.domain] || NODE_COLORS.historical;
         const isHovered = hoveredNode === node.id;
         const isNew = newNodeIds.current.has(node.id);
-        const lines = wrapLabel(node.label);
+        const lines = wrapLabel(node.label || "");
         const isProgramContrib = node.is_program_contribution;
         const visible = isNodeVisible(node);
         const count = connectionCounts[node.id] || 0;

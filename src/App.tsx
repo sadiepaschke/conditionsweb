@@ -666,7 +666,7 @@ export default function App() {
                             strong: ({ children }) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
                             em: ({ children }) => <em style={{ fontStyle: "italic", color: t.textMuted }}>{children}</em>,
                             h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 600, color: t.gold, marginTop: 14, marginBottom: 6 }}>{children}</h3>,
-                          }}>{msg.text}</Markdown>
+                          }}>{msg.text || ""}</Markdown>
                         ) : (
                           <span style={{ whiteSpace: "pre-wrap" }}>{msg.text}</span>
                         )}

@@ -61,8 +61,21 @@ export function loadSession(): SessionData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const session = JSON.parse(raw);
+    // Validate node labels to prevent rendering crashes
+    if (session?.org?.webData?.nodes) {
+      session.org.webData.nodes = session.org.webData.nodes.filter(
+        (n: any) => n && n.id && n.label
+      );
+    }
+    if (session?.program?.webData?.nodes) {
+      session.program.webData.nodes = session.program.webData.nodes.filter(
+        (n: any) => n && n.id && n.label
+      );
+    }
+    return session;
   } catch (e) {
+    localStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }

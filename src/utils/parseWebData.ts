@@ -36,24 +36,30 @@ export function parseWebData(text: string): WebData | null {
       const rawNodes = raw.conditions || raw.nodes || [];
       const rawEdges = raw.connections || raw.edges || [];
 
-      const nodes = rawNodes.map((n: any) => {
-        const domain = n.domain || TYPE_TO_DOMAIN[n.type] || "situational";
-        return {
-          id: n.id,
-          label: n.name || n.label,
-          domain,
-          is_program_contribution: n.is_program_contribution || n.type === "program" || false,
-          subpopulation: n.subpopulation,
-          confidence: n.confidence,
-          felt_experience: n.felt_experience,
-        };
-      });
+      const nodes = rawNodes
+        .filter((n: any) => n && n.id)
+        .map((n: any) => {
+          const domain = n.domain || TYPE_TO_DOMAIN[n.type] || "situational";
+          return {
+            id: String(n.id),
+            label: String(n.name || n.label || "Unnamed"),
+            domain,
+            is_program_contribution: n.is_program_contribution || n.type === "program" || false,
+            subpopulation: Array.isArray(n.subpopulation) ? n.subpopulation : [],
+            confidence: n.confidence || "inferred",
+            felt_experience: n.felt_experience || null,
+          };
+        });
 
-      const edges = rawEdges.map((e: any) => ({
-        from: e.source_id || e.from,
-        to: e.target_id || e.to,
-        relationship: e.type || e.relationship,
-      }));
+      const nodeIds = new Set(nodes.map((n: any) => n.id));
+      const edges = rawEdges
+        .filter((e: any) => e && (e.source_id || e.from) && (e.target_id || e.to))
+        .map((e: any) => ({
+          from: String(e.source_id || e.from),
+          to: String(e.target_id || e.to),
+          relationship: String(e.type || e.relationship || "produces"),
+        }))
+        .filter((e: any) => nodeIds.has(e.from) && nodeIds.has(e.to));
 
       return { nodes, edges };
     } catch (e) {}
