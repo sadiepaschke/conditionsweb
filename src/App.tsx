@@ -116,17 +116,25 @@ export default function App() {
   // Check for saved session on mount
   useEffect(() => {
     if (hasSession()) {
+      try {
       const session = loadSession();
       if (session) {
+        // Sanitize messages — ensure text is always a string
+        const sanitizeMessages = (msgs: any[]) =>
+          (msgs || []).map((m: any) => ({
+            ...m,
+            text: typeof m.text === "string" ? m.text : String(m.text || ""),
+          }));
+
         // Restore org layer
-        setOrgMessages(session.org.messages);
+        setOrgMessages(sanitizeMessages(session.org.messages));
         setOrgWebData(session.org.webData);
         orgConvHistory.current = session.org.conversationHistory;
         orgTurnCount.current = session.org.turnCount;
 
         // Restore program layer if exists
         if (session.program) {
-          setSavedProgramMessages(session.program.messages);
+          setSavedProgramMessages(sanitizeMessages(session.program.messages));
           setSavedProgramWebData(session.program.webData);
           programConvHistory.current = session.program.conversationHistory;
           programTurnCount.current = session.program.turnCount;
@@ -135,12 +143,12 @@ export default function App() {
         // Restore current scope
         setCurrentScope(session.scope);
         if (session.scope === "organizational") {
-          setMessages(session.org.messages);
+          setMessages(sanitizeMessages(session.org.messages));
           setWebData(session.org.webData);
           conversationHistory.current = [...session.org.conversationHistory];
           turnCountRef.current = session.org.turnCount;
         } else if (session.program) {
-          setMessages(session.program.messages);
+          setMessages(sanitizeMessages(session.program.messages));
           setWebData(session.program.webData);
           conversationHistory.current = [...session.program.conversationHistory];
           turnCountRef.current = session.program.turnCount;
@@ -148,6 +156,10 @@ export default function App() {
 
         setAnalysisText(session.analysisText);
         setScreen("chat");
+      }
+      } catch (e) {
+        console.error("Failed to restore session:", e);
+        clearSession();
       }
     }
   }, []);

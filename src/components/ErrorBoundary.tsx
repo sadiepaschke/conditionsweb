@@ -45,6 +45,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           </pre>
           <button
             onClick={() => {
+              try { localStorage.removeItem("conditions-web-session"); } catch {}
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
