@@ -25,13 +25,24 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return this.props.fallback || (
         <div style={{
-          padding: 32, textAlign: "center", color: "#c99d28",
+          padding: 48, textAlign: "center", color: "#c99d28",
           fontFamily: "'DM Sans', sans-serif",
+          background: "#0e0d0a", minHeight: "100vh",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
         }}>
-          <p style={{ fontSize: 16, marginBottom: 12 }}>Something went wrong.</p>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 20 }}>
-            {this.state.error?.message}
+          <p style={{ fontSize: 18, marginBottom: 16 }}>Something went wrong.</p>
+          <p style={{ fontSize: 13, color: "#999", marginBottom: 8, maxWidth: 500 }}>
+            {this.state.error?.message || "Unknown error"}
           </p>
+          <pre style={{
+            fontSize: 11, color: "#666", marginBottom: 24, maxWidth: 600,
+            textAlign: "left", whiteSpace: "pre-wrap", wordBreak: "break-all",
+            padding: 16, background: "rgba(255,255,255,0.03)", borderRadius: 8,
+            maxHeight: 150, overflow: "auto",
+          }}>
+            {this.state.error?.stack?.slice(0, 500)}
+          </pre>
           <button
             onClick={() => {
               this.setState({ hasError: false, error: null });
