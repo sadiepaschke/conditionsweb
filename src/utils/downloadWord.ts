@@ -11,7 +11,7 @@ export function downloadAsWord(text: string, filename: string) {
       xmlns:w="urn:schemas-microsoft-com:office:word"
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8"/>
 <!--[if gte mso 9]>
 <xml>
 <w:WordDocument>
@@ -153,8 +153,8 @@ function markdownToWordHtml(md: string): string {
   html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   // Horizontal rules
-  html = html.replace(/^---+$/gm, "<hr>");
-  html = html.replace(/^\*\*\*+$/gm, "<hr>");
+  html = html.replace(/^---+$/gm, "<hr/>");
+  html = html.replace(/^\*\*\*+$/gm, "<hr/>");
 
   // Headings (must come before bold/italic processing)
   html = html.replace(/^#### (.*$)/gm, "<h4>$1</h4>");
@@ -170,7 +170,7 @@ function markdownToWordHtml(md: string): string {
   // Blockquotes
   html = html.replace(/^&gt; (.*$)/gm, "<blockquote>$1</blockquote>");
   // Merge consecutive blockquotes
-  html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br>");
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, "<br/>");
 
   // Numbered lists: lines starting with "1. ", "2. ", etc.
   html = html.replace(/^(\d+)\. (.*$)/gm, "<oli>$2</oli>");
@@ -201,7 +201,7 @@ function markdownToWordHtml(md: string): string {
         return trimmed;
       }
       // Convert single newlines to <br> within paragraphs
-      return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
+      return `<p>${trimmed.replace(/\n/g, "<br/>")}</p>`;
     })
     .join("\n");
 

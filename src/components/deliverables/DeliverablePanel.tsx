@@ -204,8 +204,18 @@ export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose
     }
 
     // Logic model renders as a visual diagram when structured data is available
-    if (activeTab === "logic-model" && typeof data.content === "object" && data.content?.columns) {
-      return <LogicModelDiagram data={data.content} dark={dark} t={t} />;
+    if (activeTab === "logic-model") {
+      let lmData = data.content;
+      // If content is a JSON string, parse it client-side
+      if (typeof lmData === "string") {
+        try {
+          const cleaned = lmData.replace(/^```(?:json)?\s*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+          lmData = JSON.parse(cleaned);
+        } catch { /* fall through to markdown */ }
+      }
+      if (typeof lmData === "object" && lmData?.columns) {
+        return <LogicModelDiagram data={lmData} dark={dark} t={t} />;
+      }
     }
 
     // Other deliverables render markdown
