@@ -61,12 +61,23 @@ Generate a Theory of Change that:
 Format as a structured document. Use plain language. Keep it concise.`;
 
     } else if (type === "logic-model") {
-      prompt = `You are generating a Logic Model from a Conditions Web.
+      prompt = `You are converting a Conditions Web into a standard Logic Model. A logic model is a LINEAR simplification of a non-linear web — it is a translation artifact for funders and stakeholders, not the real working model.
 
-Map conditions into: INPUTS (resources required), ACTIVITIES (what program does), OUTPUTS (direct products), OUTCOMES (downstream changes).
+Your task: reason deeply about each condition and classify it into the correct logic model column. Trace the connection chains to determine causal flow.
 
-Program contributions:
-${programConditions.map(c => `- ${c.label || c.name} (${c.domain})`).join("\n") || "None identified"}
+CLASSIFICATION RULES:
+- INPUTS: Resources the program requires to operate. Organizational conditions (staff, funding, space, partnerships), structural supports, community assets the program draws on. These ENABLE the program but are not the program itself.
+- ACTIVITIES: What the program actively DOES. Program contributions (is_program_contribution=true), specific interventions, services delivered, engagement methods. These are ACTIONS, described with verbs.
+- OUTPUTS: Direct, countable products of activities. Things you can measure immediately: sessions held, people served, materials distributed, referrals made. If a condition is something the program directly produces as a tangible deliverable, it goes here.
+- SHORT-TERM OUTCOMES: Changes in participants or relationships within 1-2 years. Relational conditions (trust, safety, felt respect), participant-level changes (knowledge, behavior, connection), immediate shifts in circumstance.
+- LONG-TERM OUTCOMES: Broader systemic or community-level changes that emerge over 3+ years. Situational shifts, community-level improvements, landscape changes, reduced risk conditions.
+
+UNMAPPED CONDITIONS: Historical/systemic conditions, situational context, risks, and landscape conditions that FRAME the work but are not part of the program's causal chain should be listed as unmapped with a brief reason. These are the CONDITIONS THE PROGRAM ENTERS — they are context, not logic model elements.
+
+FLOWS: Identify the key causal links between items across columns. Not every item needs a flow — focus on the 8-15 most important causal chains. Use the connection data to inform this.
+
+Program contributions (is_program_contribution=true):
+${programConditions.map(c => `- ${c.id}: ${c.label || c.name} (${c.domain})`).join("\n") || "None identified"}
 
 All conditions:
 ${conditionsList}
@@ -74,7 +85,8 @@ ${conditionsList}
 Connections:
 ${connectionsList}
 
-Generate a logic model. Flag ambiguous assignments. Note this is a translation artifact. Format as a structured table with four columns.`;
+RESPOND WITH ONLY valid JSON in this exact format (no markdown, no code fences, no explanation):
+{"columns":[{"id":"inputs","label":"Inputs","items":[{"id":"c-XX","label":"condition name","note":"brief classification reason"}]},{"id":"activities","label":"Activities","items":[...]},{"id":"outputs","label":"Outputs","items":[...]},{"id":"short-term","label":"Short-term Outcomes","items":[...]},{"id":"long-term","label":"Long-term Outcomes","items":[...]}],"flows":[{"from":"c-XX","to":"c-YY"}],"assumptions":["key assumption 1","key assumption 2"],"external_factors":["external factor 1"],"unmapped":[{"id":"c-XX","label":"condition name","reason":"Historical context — frames the work"}]}`;
 
     } else if (type === "checklist") {
       // Checklist is computed, not AI-generated
@@ -126,9 +138,27 @@ Generate a logic model. Flag ambiguous assignments. Note this is a translation a
     );
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-    return new Response(JSON.stringify({ type, content }), {
+    // For logic-model, parse the structured JSON response
+    if (type === "logic-model") {
+      try {
+        // Strip markdown code fences if present
+        const cleaned = rawContent.replace(/^```(?:json)?\s*\n?/m, "").replace(/\n?```\s*$/m, "").trim();
+        const parsed = JSON.parse(cleaned);
+        return new Response(JSON.stringify({ type, content: parsed }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      } catch (parseErr) {
+        // Fallback: return raw text if JSON parse fails
+        console.error("Logic model JSON parse failed:", parseErr.message);
+        return new Response(JSON.stringify({ type, content: rawContent }), {
+          status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ type, content: rawContent }), {
       status: 200, headers: { "Content-Type": "application/json" },
     });
   } catch (err) {

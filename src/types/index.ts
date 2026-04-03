@@ -77,3 +77,25 @@ export interface NodeColorSet {
   light: string;
   border: string;
 }
+
+// Logic Model types
+export interface LogicModelItem {
+  id: string;
+  label: string;
+  note?: string;
+  reason?: string;
+}
+
+export interface LogicModelColumn {
+  id: string;
+  label: string;
+  items: LogicModelItem[];
+}
+
+export interface LogicModelData {
+  columns: LogicModelColumn[];
+  flows: { from: string; to: string; label?: string }[];
+  assumptions: string[];
+  external_factors: string[];
+  unmapped: LogicModelItem[];
+}

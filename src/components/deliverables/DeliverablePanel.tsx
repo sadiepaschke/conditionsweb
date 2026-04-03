@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import Markdown from "react-markdown";
 import { downloadAsWord } from "../../utils/downloadWord";
+import LogicModelDiagram from "./LogicModelDiagram";
 import type { ThemeTokens, ConditionNode, Edge } from "../../types";
 
 type DeliverableType = "narrative" | "toc" | "logic-model" | "checklist";
@@ -200,6 +201,11 @@ export default function DeliverablePanel({ nodes, edges, webId, t, dark, onClose
     // Checklist renders structured data with interactive checkboxes
     if (activeTab === "checklist" && typeof data.content === "object") {
       return <ChecklistView data={data.content} t={t} reviewChecks={reviewChecks} toggleCheck={toggleCheck} />;
+    }
+
+    // Logic model renders as a visual diagram when structured data is available
+    if (activeTab === "logic-model" && typeof data.content === "object" && data.content?.columns) {
+      return <LogicModelDiagram data={data.content} dark={dark} t={t} />;
     }
 
     // Other deliverables render markdown
