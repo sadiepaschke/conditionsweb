@@ -29,6 +29,7 @@ export interface ConditionNode {
   subpopulation?: string[];
   confidence?: Confidence;
   felt_experience?: string;
+  source?: "ai" | "manual";
   x?: number;
   y?: number;
   vx?: number;

@@ -3,6 +3,7 @@ import Markdown from "react-markdown";
 import { THEME, globalStyles } from "./constants/theme";
 import { buildSystemPrompt } from "./constants/prompts";
 import { parseWebData, cleanMessage } from "./utils/parseWebData";
+import { mergeWebData, findDisconnectedNodes } from "./utils/mergeWebData";
 import { exportAsJSON, exportAsCSV } from "./utils/exportWeb";
 import { saveSession, loadSession, hasSession, clearSession } from "./utils/sessionStorage";
 import { api } from "./services/api";
@@ -89,6 +90,12 @@ export default function App() {
     }
     return Array.from(subs);
   }, [webData.nodes]);
+
+  // Compute disconnected node IDs for visual warnings
+  const disconnectedNodeIds = useMemo(
+    () => findDisconnectedNodes(webData.nodes, webData.edges),
+    [webData.nodes, webData.edges]
+  );
 
   const handleToggleDomain = useCallback((domain: Domain) => {
     setFilteredDomains(prev => {
@@ -245,18 +252,22 @@ export default function App() {
         return;
       }
 
-      let parsed: any = null;
+      let parseResult: any = null;
       let clean = fullText;
       try {
-        parsed = parseWebData(fullText);
+        parseResult = parseWebData(fullText);
         clean = cleanMessage(fullText);
       } catch (parseErr) {
         console.error("Failed to parse web data:", parseErr);
         clean = fullText.replace(/\n?\{[\s\S]*$/, "").trim() || fullText;
       }
-      if (parsed) {
+      if (parseResult) {
+        const { webData: parsed, droppedEdges } = parseResult;
+        if (droppedEdges > 0) {
+          console.warn(`[App] ${droppedEdges} edge(s) dropped due to missing node references`);
+        }
         console.log("Parsed web data:", parsed.nodes.length, "nodes,", parsed.edges.length, "edges");
-        setWebData(parsed);
+        setWebData(prev => mergeWebData(prev, parsed));
         if (useExpressApi && webId) {
           api.syncConditions(webId, parsed.nodes, turnNumber).catch(() => {});
           api.syncConnections(webId, parsed.edges).catch(() => {});
@@ -398,7 +409,15 @@ export default function App() {
     setScreen("start");
   };
 
-  const handleUpdateNodes = (nodes: any[]) => setWebData(prev => ({ ...prev, nodes }));
+  const handleUpdateNodes = (updatedNodes: any[]) => {
+    setWebData(prev => ({ ...prev, nodes: updatedNodes }));
+    // Inject context note so AI preserves manual nodes in next emission
+    const manualNodes = updatedNodes.filter((n: any) => n.source === "manual");
+    if (manualNodes.length > 0) {
+      const note = `[System note: The user manually added these conditions to the web: ${manualNodes.map((n: any) => `"${n.label}" (${n.domain}, id: ${n.id})`).join(", ")}. Include them in your next JSON emission with their existing IDs and at least one connection each.]`;
+      conversationHistory.current.push({ role: "user", parts: [{ text: note }] });
+    }
+  };
   const handleUpdateEdges = (edges: any[]) => setWebData(prev => ({ ...prev, edges }));
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -871,6 +890,7 @@ export default function App() {
                       dark={dark}
                       filteredDomains={filteredDomains}
                       selectedSubpop={selectedSubpop}
+                      disconnectedNodeIds={disconnectedNodeIds}
                     />
                   </div>
 

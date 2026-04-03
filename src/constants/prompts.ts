@@ -417,4 +417,22 @@ CRITICAL: Condition names MUST be short — 2 to 6 words maximum. These are labe
 
 CRITICAL: You MUST include connections in every JSON emission. Conditions without connections make a useless map. Every condition should connect to at least one other condition.
 Connection fields: id, source_id, target_id, type
-Subpopulation fields: id, label, description`;
+Subpopulation fields: id, label, description
+
+CRITICAL — ID STABILITY RULES:
+- Assign IDs sequentially: c-01, c-02, c-03, etc. Always zero-pad single digits.
+- Once a condition gets an ID (e.g., c-01), that ID MUST remain the same in ALL future emissions. NEVER renumber conditions.
+- When removing a condition, do NOT renumber the remaining conditions. Skip the gap.
+- When adding new conditions, use the next available number.
+- The front end tracks conditions by ID. Changing c-03 to c-02 silently breaks all connections referencing c-03.
+
+CRITICAL — CONNECTION VALIDATION:
+- When adding a new condition, ALWAYS add at least one connection linking it to an existing condition.
+- Before emitting JSON, verify: every condition must appear in at least one connection (as source_id or target_id).
+- If you cannot determine the exact relationship, use "enables" as a default.
+- Common connection patterns:
+  - Historical conditions → "produces" → Situational conditions
+  - Situational conditions → "enables" or "blocks" → Population conditions
+  - Organizational conditions → "enables" → Program conditions
+  - Program conditions → "addresses" or "partially_addresses" → Situational/Population conditions
+  - Community conditions → "amplifies" or "enables" → Program/Relational conditions`;

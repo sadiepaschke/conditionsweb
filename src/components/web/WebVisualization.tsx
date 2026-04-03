@@ -10,12 +10,13 @@ interface WebVisualizationProps {
   dark: boolean;
   filteredDomains?: Set<Domain>;
   selectedSubpop?: string | null;
+  disconnectedNodeIds?: Set<string>;
 }
 
 // Enabling/positive relationship types use warm tones
 const WARM_RELS = new Set(["enables", "amplifies", "produces", "maintains", "addresses", "partially_addresses"]);
 
-export default function WebVisualization({ nodes, edges, dark, filteredDomains, selectedSubpop }: WebVisualizationProps) {
+export default function WebVisualization({ nodes, edges, dark, filteredDomains, selectedSubpop, disconnectedNodeIds }: WebVisualizationProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const simRef = useRef<d3.Simulation<ConditionNode, SimEdge> | null>(null);
@@ -84,18 +85,23 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
     // Stop old simulation
     if (simRef.current) simRef.current.stop();
 
-    // Create fresh simulation with nodes
-    // Use stronger link force and weaker charge for disconnected nodes
-    // to keep them closer to the cluster
+    // Determine which nodes have connections for variable centering force
+    const connectedIds = new Set<string>();
+    for (const e of mergedEdges) {
+      connectedIds.add(typeof e.source === "string" ? e.source : (e.source as any).id);
+      connectedIds.add(typeof e.target === "string" ? e.target : (e.target as any).id);
+    }
+
+    // Create fresh simulation — tuned for 10-50 node concept maps
     const simulation = d3.forceSimulation<ConditionNode>(mergedNodes)
-      .force("link", d3.forceLink<ConditionNode, SimEdge>(mergedEdges).id((d: any) => d.id).distance(180))
-      .force("charge", d3.forceManyBody().strength(-500))
+      .force("link", d3.forceLink<ConditionNode, SimEdge>(mergedEdges).id((d: any) => d.id).distance(150))
+      .force("charge", d3.forceManyBody().strength(-450).distanceMax(400))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius(70))
-      // Pull disconnected nodes toward the center more strongly
-      .force("x", d3.forceX(width / 2).strength(0.03))
-      .force("y", d3.forceY(height / 2).strength(0.03))
-      .alpha(0.5)
+      .force("collision", d3.forceCollide<ConditionNode>().radius((d: any) => getNodeRadius(d.id) + 15).iterations(4))
+      // Disconnected nodes get pulled toward center more strongly
+      .force("x", d3.forceX(width / 2).strength((d: any) => connectedIds.has(d.id) ? 0.03 : 0.08))
+      .force("y", d3.forceY(height / 2).strength((d: any) => connectedIds.has(d.id) ? 0.03 : 0.08))
+      .alpha(0.4)
       .on("tick", () => forceRender(n => n + 1));
 
     simRef.current = simulation;
@@ -293,6 +299,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
         const isNew = newNodeIds.current.has(node.id);
         const lines = wrapLabel(node.label || "");
         const isProgramContrib = node.is_program_contribution;
+        const isDisconnected = disconnectedNodeIds?.has(node.id) ?? false;
         const visible = isNodeVisible(node);
         const count = connectionCounts[node.id] || 0;
         const isHighLeverage = count >= 4;
@@ -311,6 +318,17 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
               transition: "opacity 0.4s ease-out",
             }}
           >
+            {/* Disconnected node warning ring */}
+            {isDisconnected && (
+              <circle
+                r={outerR + 6}
+                fill="none"
+                stroke={t.gold}
+                strokeWidth="1.5"
+                strokeOpacity="0.4"
+                strokeDasharray="3 4"
+              />
+            )}
             {/* High-leverage glow ring */}
             {isHighLeverage && (
               <circle
@@ -366,6 +384,19 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
         );
       })}
       </g>
+
+      {/* Disconnected node count overlay — outside zoom group so it stays fixed */}
+      {disconnectedNodeIds && disconnectedNodeIds.size > 0 && (
+        <text
+          x="16" y="24"
+          fontSize="11"
+          fontFamily="'DM Sans', sans-serif"
+          fill={t.gold}
+          fillOpacity="0.7"
+        >
+          {disconnectedNodeIds.size} condition{disconnectedNodeIds.size > 1 ? "s" : ""} not yet connected
+        </text>
+      )}
     </svg>
   );
 }

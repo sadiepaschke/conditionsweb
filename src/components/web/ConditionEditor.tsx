@@ -49,6 +49,7 @@ export default function ConditionEditor({ dark, nodes, edges, onUpdateNodes, onU
       label: newLabel.trim(),
       domain: newDomain,
       is_program_contribution: false,
+      source: "manual",
     }]);
     setNewLabel("");
     setAddingNew(false);

@@ -16,6 +16,11 @@ const TYPE_TO_DOMAIN: Record<string, Domain> = {
   risks: "situational",
 };
 
+// Normalize IDs: pad single-digit c-N to c-0N for consistency
+function normalizeId(id: string): string {
+  return String(id).replace(/^c-(\d)$/, "c-0$1");
+}
+
 // Match JSON block at the end of text — with or without --- separator
 const JSON_PATTERNS = [
   /---\s*(\{[\s\S]*\})\s*$/,              // standard: --- followed by JSON
@@ -24,7 +29,12 @@ const JSON_PATTERNS = [
   /\n(\{"organization_name"[\s\S]*\})\s*$/, // onboarding+conditions JSON without ---
 ];
 
-export function parseWebData(text: string): WebData | null {
+export interface ParseResult {
+  webData: WebData;
+  droppedEdges: number;
+}
+
+export function parseWebData(text: string): ParseResult | null {
   for (const pattern of JSON_PATTERNS) {
     try {
       const match = text.match(pattern);
@@ -41,27 +51,40 @@ export function parseWebData(text: string): WebData | null {
         .map((n: any) => {
           const domain = n.domain || TYPE_TO_DOMAIN[n.type] || "situational";
           return {
-            id: String(n.id),
+            id: normalizeId(n.id),
             label: String(n.name || n.label || "Unnamed"),
             domain,
             is_program_contribution: n.is_program_contribution || n.type === "program" || false,
             subpopulation: Array.isArray(n.subpopulation) ? n.subpopulation : [],
             confidence: n.confidence || "inferred",
             felt_experience: n.felt_experience || null,
+            source: "ai" as const,
           };
         });
 
       const nodeIds = new Set(nodes.map((n: any) => n.id));
-      const edges = rawEdges
+
+      // Map and normalize edge IDs
+      const allEdges = rawEdges
         .filter((e: any) => e && (e.source_id || e.from) && (e.target_id || e.to))
         .map((e: any) => ({
-          from: String(e.source_id || e.from),
-          to: String(e.target_id || e.to),
+          from: normalizeId(e.source_id || e.from),
+          to: normalizeId(e.target_id || e.to),
           relationship: String(e.type || e.relationship || "produces"),
-        }))
-        .filter((e: any) => nodeIds.has(e.from) && nodeIds.has(e.to));
+        }));
 
-      return { nodes, edges };
+      // Partition into valid and dropped
+      const validEdges = allEdges.filter((e: any) => nodeIds.has(e.from) && nodeIds.has(e.to));
+      const droppedCount = allEdges.length - validEdges.length;
+
+      if (droppedCount > 0) {
+        const dropped = allEdges.filter((e: any) => !nodeIds.has(e.from) || !nodeIds.has(e.to));
+        for (const e of dropped) {
+          console.warn(`[parseWebData] Dropped edge: "${e.from}" → "${e.to}" (node not found)`);
+        }
+      }
+
+      return { webData: { nodes, edges: validEdges }, droppedEdges: droppedCount };
     } catch (e) {}
   }
   return null;
