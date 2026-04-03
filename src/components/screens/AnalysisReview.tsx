@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Markdown from "react-markdown";
 import { THEME } from "../../constants/theme";
+import { downloadAsWord } from "../../utils/downloadWord";
 
 interface AnalysisReviewProps {
   dark: boolean;
@@ -12,26 +13,7 @@ interface AnalysisReviewProps {
 }
 
 function downloadAnalysis(text: string) {
-  const html = text
-    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/^- (.*$)/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-  const docContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Calibri',sans-serif;font-size:11pt;line-height:1.6;max-width:7in;margin:0.5in auto}h1{font-size:18pt;color:#333}h2{font-size:14pt;color:#444}h3{font-size:12pt;color:#7a5f15}ul{margin:6pt 0;padding-left:20pt}li{margin:3pt 0}strong{font-weight:bold}</style></head><body><p>${html}</p></body></html>`;
-  const blob = new Blob([docContent], { type: "application/msword" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "situational-analysis.doc";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadAsWord(text, "situational-analysis.doc");
 }
 
 export default function AnalysisReview({

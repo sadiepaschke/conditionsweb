@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import Markdown from "react-markdown";
+import { downloadAsWord } from "../../utils/downloadWord";
 import type { ThemeTokens, ConditionNode, Edge } from "../../types";
 
 type DeliverableType = "narrative" | "toc" | "logic-model" | "checklist";
@@ -20,29 +21,6 @@ const TABS: { key: DeliverableType; label: string }[] = [
   { key: "logic-model", label: "Logic Model" },
   { key: "checklist", label: "Review Checklist" },
 ];
-
-function downloadAsWord(text: string, filename: string) {
-  const html = text
-    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/^- (.*$)/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`)
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-  const doc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Calibri',sans-serif;font-size:11pt;line-height:1.6;max-width:7in;margin:0.5in auto}h1{font-size:18pt;color:#333}h2{font-size:14pt;color:#444}h3{font-size:12pt;color:#7a5f15}ul{margin:6pt 0;padding-left:20pt}li{margin:3pt 0}</style></head><body><p>${html}</p></body></html>`;
-  const blob = new Blob([doc], { type: "application/msword" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
 
 function downloadWebAsPng(dark: boolean) {
   const svg = document.querySelector("svg");
