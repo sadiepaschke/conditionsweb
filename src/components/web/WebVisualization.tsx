@@ -68,11 +68,15 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
     newNodeIds.current = incoming;
     prevNodeIds.current = new Set(nodes.map(n => n.id));
 
-    const mergedEdges: SimEdge[] = edges.map(e => ({
-      source: e.from,
-      target: e.to,
-      relationship: e.relationship as any,
-    }));
+    // Filter edges to only those where both source and target exist in the node set
+    const nodeIdSet = new Set(mergedNodes.map(n => n.id));
+    const mergedEdges: SimEdge[] = edges
+      .filter(e => nodeIdSet.has(e.from) && nodeIdSet.has(e.to))
+      .map(e => ({
+        source: e.from,
+        target: e.to,
+        relationship: e.relationship as any,
+      }));
 
     nodesRef.current = mergedNodes;
     edgesRef.current = mergedEdges;
@@ -81,34 +85,72 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
     if (simRef.current) simRef.current.stop();
 
     // Create fresh simulation with nodes
+    // Use stronger link force and weaker charge for disconnected nodes
+    // to keep them closer to the cluster
     const simulation = d3.forceSimulation<ConditionNode>(mergedNodes)
       .force("link", d3.forceLink<ConditionNode, SimEdge>(mergedEdges).id((d: any) => d.id).distance(180))
       .force("charge", d3.forceManyBody().strength(-500))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collision", d3.forceCollide().radius(70))
+      // Pull disconnected nodes toward the center more strongly
+      .force("x", d3.forceX(width / 2).strength(0.03))
+      .force("y", d3.forceY(height / 2).strength(0.03))
       .alpha(0.5)
       .on("tick", () => forceRender(n => n + 1));
 
     simRef.current = simulation;
 
+    // Auto-fit view after simulation settles for new nodes
     setTimeout(() => {
       newNodeIds.current = new Set();
+      // Auto-fit: compute bounding box of all nodes and adjust zoom to fit
+      if (svgRef.current && zoomRef.current && mergedNodes.length > 0) {
+        const positioned = mergedNodes.filter(n => n.x != null && n.y != null && isFinite(n.x!) && isFinite(n.y!));
+        if (positioned.length > 0) {
+          const padding = 80;
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const n of positioned) {
+            if (n.x! < minX) minX = n.x!;
+            if (n.y! < minY) minY = n.y!;
+            if (n.x! > maxX) maxX = n.x!;
+            if (n.y! > maxY) maxY = n.y!;
+          }
+          const bboxW = maxX - minX + padding * 2;
+          const bboxH = maxY - minY + padding * 2;
+          const scale = Math.min(width / bboxW, height / bboxH, 1.5);
+          const cx = (minX + maxX) / 2;
+          const cy = (minY + maxY) / 2;
+          const tx = width / 2 - cx * scale;
+          const ty = height / 2 - cy * scale;
+          const svg = d3.select(svgRef.current);
+          svg.transition().duration(500).call(
+            zoomRef.current.transform,
+            d3.zoomIdentity.translate(tx, ty).scale(scale)
+          );
+        }
+      }
       forceRender(n => n + 1);
     }, 800);
 
     return () => { simulation.stop(); };
   }, [nodes, edges]);
 
-  // Set up zoom behavior
+  // Set up zoom behavior (supports mouse wheel + pinch-to-zoom on touch)
   useEffect(() => {
     if (!svgRef.current) return;
     const svg = d3.select(svgRef.current);
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4])
+      .filter((event) => {
+        // Allow all zoom events including touch
+        return !event.button;
+      })
       .on("zoom", (event) => {
         setTransform(event.transform);
       });
     svg.call(zoom);
+    // Prevent browser from intercepting touch gestures on the SVG
+    svg.style("touch-action", "none");
     zoomRef.current = zoom;
     return () => { svg.on(".zoom", null); };
   }, []);
@@ -118,26 +160,8 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   const simNodes = nodesRef.current;
   const simEdges = edgesRef.current;
 
-  // Auto-fit viewBox to contain all nodes with padding
-  // MUST be before any early returns to satisfy React's rules of hooks
-  const computedViewBox = useMemo(() => {
-    const positioned = simNodes.filter(n => n.x != null && n.y != null && isFinite(n.x!) && isFinite(n.y!));
-    if (positioned.length === 0) return "0 0 900 700";
-    const padding = 100;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const n of positioned) {
-      const r = 50;
-      if (n.x! - r < minX) minX = n.x! - r;
-      if (n.y! - r < minY) minY = n.y! - r;
-      if (n.x! + r > maxX) maxX = n.x! + r;
-      if (n.y! + r + 30 > maxY) maxY = n.y! + r + 30;
-    }
-    const vbX = minX - padding;
-    const vbY = minY - padding;
-    const vbW = Math.max(maxX - minX + padding * 2, 400);
-    const vbH = Math.max(maxY - minY + padding * 2, 400);
-    return `${vbX} ${vbY} ${vbW} ${vbH}`;
-  }, [simNodes, renderCount]);
+  // Fixed viewBox — zoom/pan is handled entirely by the d3 zoom transform on <g>
+  const fixedViewBox = "0 0 900 700";
 
   if (!nodes.length) {
     return (
@@ -207,7 +231,7 @@ export default function WebVisualization({ nodes, edges, dark, filteredDomains, 
   };
 
   return (
-    <svg ref={svgRef} viewBox={computedViewBox} style={{ width: "100%", height: "100%", cursor: "grab" }}>
+    <svg ref={svgRef} viewBox={fixedViewBox} style={{ width: "100%", height: "100%", cursor: "grab", touchAction: "none" }}>
       <defs>
         {Object.entries(EDGE_COLORS).map(([rel, color]) => (
           <marker
