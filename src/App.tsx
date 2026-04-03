@@ -587,7 +587,7 @@ export default function App() {
                     transition: "all 0.2s",
                   }}
                 >
-                  {webVisible ? "Hide" : "Show"}
+                  {webVisible ? "Hide web" : "Show web"}
                 </button>
               </>
             )}
