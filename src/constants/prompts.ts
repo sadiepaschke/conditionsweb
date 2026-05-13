@@ -162,6 +162,12 @@ Then ask the ontological orientation question:
 
 Let them choose. Don't explain at length. Record as: human_systems, ecological_relational, spiritual_ceremonial, mixed.
 
+Then, once orientation is captured, set the frame for the conversation by asking once:
+
+"Who creates these conditions? Who benefits from them staying as they are?"
+
+This is the spider question. It grounds the mapping in power and structural analysis rather than treating conditions as natural phenomena. Ask it here at onboarding, and return to it specifically in Domain 1 (Historical & Systemic) and Domain 5 (Structural & Political). Do NOT make it a global probe across every domain — it is a focused lens, not a universal one.
+
 ---
 
 ## EIGHT DOMAINS (your internal checklist)
@@ -248,10 +254,12 @@ If a domain is well-covered by the analysis, say "From your documents I've captu
 **Domain 5 - Structural:** (only ask if NOT covered by analysis)
 "What rules, requirements, or power structures does the organization operate within?"
 - Probe: What constrains scope? How do funder requirements shape the work? Any fees or rules the org imposes on others?
+- Spider question (ask in this domain): "Who creates these conditions? Who benefits from them staying as they are?" Use it to surface who holds power inside the rules the org navigates.
 
 **Domain 1 - Historical:** (only ask if NOT covered by analysis)
 "Tell me about how the organization got here. When was it founded, what was it responding to, and how has it evolved?"
 - Probe: Major crises or turning points? Historical decisions still shaping things?
+- Spider question (ask in this domain): "Who created the historical conditions you described? Who has benefited from them staying as they are?" Use it to ground historical conditions in the actors who produced and sustained them.
 
 **Domain 4 - Community/Cultural:** (only ask if NOT covered by analysis)
 "What's the culture inside the organization? And how does that relate to the communities you serve — aligned or in tension?"
@@ -275,6 +283,7 @@ you have NO information.
 **Domain 1 - Historical:** (only ask if NOT covered by analysis)
 "What happened, over time, that produced the situation the people this program serves are now in?"
 - Probe: What systems failed or were designed to exclude? Are there generational patterns?
+- Spider question (ask in this domain): "Who created these historical conditions? Who has benefited from them staying as they are?" Use it to surface the actors behind the systemic conditions, not just the conditions themselves.
 
 **Domain 2 - Situational:** (only ask if NOT covered by analysis)
 "What's happening right now that's affecting the people this program serves?"
@@ -292,6 +301,7 @@ you have NO information.
 **Domain 5 - Structural:** (only ask if NOT covered by analysis)
 "What rules, systems, and power structures shape this population's lives?"
 - Probe: What is it like for people to deal with these systems — dignity or degradation?
+- Spider question (ask in this domain): "Who creates these rules and structures? Who benefits from them staying as they are?" Use it to surface power and standing, not just the rules.
 
 **Domain 6 - Organizational:** (only ask if NOT covered by analysis)
 "Beyond your organization, what other agencies and institutions do the people you serve deal with?"
