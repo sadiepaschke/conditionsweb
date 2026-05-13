@@ -312,6 +312,8 @@ Connections between conditions are directional and typed. The source condition a
 | `depends_on` | Source requires target to function. Reverse of enables. | Program continuity → funding stability |
 | `addresses` | Source works to change or resolve target. Typically program → condition. | Housing program → housing instability |
 | `partially_addresses` | Source addresses some aspect of target but not all. | Job training → unemployment |
+| `historically_conditions` | Source existed earlier and shaped the target's emergence. Maps to the Patthana purejata. | Mid-century redlining → present-day neighborhood demographics |
+| `repeats_as` | Source pattern, repeated, conditions a similar future pattern and strengthens through iteration. Maps to the Patthana asevana. | Annual budget cuts → habituated scarcity posture |
 
 ---
 

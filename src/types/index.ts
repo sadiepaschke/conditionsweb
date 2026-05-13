@@ -17,7 +17,9 @@ export type EdgeRelationship =
   | "amplifies"
   | "depends_on"
   | "addresses"
-  | "partially_addresses";
+  | "partially_addresses"
+  | "historically_conditions"
+  | "repeats_as";
 
 export type Confidence = "explicit" | "inferred" | "suggested_by_ai";
 

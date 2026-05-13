@@ -23,13 +23,15 @@ export const DOMAIN_LABELS: Record<Domain, string> = {
 };
 
 export const EDGE_COLORS: Record<EdgeRelationship, string> = {
-  produces:            "#888888",
-  maintains:           "#777777",
-  enables:             "#cbb26a",
-  constrains:          "#9e7c5a",
-  blocks:              "#8B4513",
-  amplifies:           "#c99d28",
-  depends_on:          "#7a6a4a",
-  addresses:           "#8a9e7a",
-  partially_addresses: "#b0c4a0",
+  produces:                "#888888",
+  maintains:               "#777777",
+  enables:                 "#cbb26a",
+  constrains:              "#9e7c5a",
+  blocks:                  "#8B4513",
+  amplifies:               "#c99d28",
+  depends_on:              "#7a6a4a",
+  addresses:               "#8a9e7a",
+  partially_addresses:     "#b0c4a0",
+  historically_conditions: "#5d5040",
+  repeats_as:              "#a89878",
 };

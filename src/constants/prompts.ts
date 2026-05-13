@@ -354,6 +354,8 @@ Connections are directional. The source acts on the target.
 - **depends_on** — source requires target to function
 - **addresses** — source works to change or resolve target
 - **partially_addresses** — source addresses some aspect but not all
+- **historically_conditions** — source existed earlier and shaped the target's emergence (use when the source is no longer the active cause but its prior existence still shapes what is here now)
+- **repeats_as** — source pattern, repeated, conditions a similar future pattern and strengthens through iteration (use for habituated patterns where each occurrence reinforces the next)
 
 ---
 

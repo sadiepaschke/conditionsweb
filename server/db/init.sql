@@ -16,7 +16,8 @@ CREATE TYPE confidence_level AS ENUM ('explicit', 'inferred', 'suggested_by_ai')
 
 CREATE TYPE connection_type AS ENUM (
   'produces', 'maintains', 'enables', 'constrains',
-  'blocks', 'amplifies', 'depends_on', 'addresses', 'partially_addresses'
+  'blocks', 'amplifies', 'depends_on', 'addresses', 'partially_addresses',
+  'historically_conditions', 'repeats_as'
 );
 
 -- Patthana paccaya: present=atthi, absent=natthi, disappearing=vigata, persisting=avigata.
