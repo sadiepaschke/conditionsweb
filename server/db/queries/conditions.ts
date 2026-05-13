@@ -2,7 +2,7 @@ import pool, { ageQuery } from "../pool.js";
 
 export async function syncConditions(
   webId: string,
-  nodes: { id: string; label: string; domain: string; is_program_contribution?: boolean; subpopulation?: string[]; confidence?: string; felt_experience?: string }[],
+  nodes: { id: string; label: string; domain: string; is_program_contribution?: boolean; subpopulation?: string[]; confidence?: string; felt_experience?: string; condition_modality?: string }[],
   turnNumber?: number
 ) {
   const client = await pool.connect();
@@ -28,20 +28,23 @@ export async function syncConditions(
       if (existingMap.has(node.id)) {
         await client.query(
           `UPDATE conditions SET name = $1, domain = $2, is_program_contribution = $3,
-           subpopulation = $4, confidence = $5, felt_experience = $6
-           WHERE web_id = $7 AND ai_node_id = $8`,
+           subpopulation = $4, confidence = $5, felt_experience = $6,
+           condition_modality = $7
+           WHERE web_id = $8 AND ai_node_id = $9`,
           [node.label, node.domain, node.is_program_contribution || false,
            node.subpopulation || null, node.confidence || "explicit",
-           node.felt_experience || null, webId, node.id]
+           node.felt_experience || null, node.condition_modality || "present",
+           webId, node.id]
         );
       } else {
         await client.query(
           `INSERT INTO conditions (web_id, ai_node_id, name, domain, is_program_contribution,
-           subpopulation, source_turn, confidence, felt_experience)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+           subpopulation, source_turn, confidence, felt_experience, condition_modality)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [webId, node.id, node.label, node.domain, node.is_program_contribution || false,
            node.subpopulation || null, turnNumber || null,
-           node.confidence || "explicit", node.felt_experience || null]
+           node.confidence || "explicit", node.felt_experience || null,
+           node.condition_modality || "present"]
         );
       }
     }

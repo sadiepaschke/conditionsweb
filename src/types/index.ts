@@ -21,6 +21,10 @@ export type EdgeRelationship =
 
 export type Confidence = "explicit" | "inferred" | "suggested_by_ai";
 
+// Patthana paccaya: present=atthi, absent=natthi, disappearing=vigata, persisting=avigata.
+// Absent conditions are first-class entities, not the negation of a present condition.
+export type ConditionModality = "present" | "absent" | "disappearing" | "persisting";
+
 export interface ConditionNode {
   id: string;
   label: string;
@@ -30,6 +34,7 @@ export interface ConditionNode {
   confidence?: Confidence;
   felt_experience?: string;
   source?: "ai" | "manual";
+  condition_modality?: ConditionModality;
   x?: number;
   y?: number;
   vx?: number;

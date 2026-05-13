@@ -209,6 +209,14 @@ These are not domains. They do not get their own conditions. They inform how you
 
 ## CONVERSATION FLOW
 
+### Absence probe (apply in every domain)
+
+After the opening question and first follow-up in each domain, ask once:
+
+"What is missing here? What used to be present that no longer is? What absence is conditioning what you can do or what people you serve can do?"
+
+This is a lens applied within each domain, not a separate domain. Record any absent, disappearing, or lost conditions as first-class conditions with the appropriate condition_modality value (absent, disappearing, persisting). Do not record absences as the negation of a present condition.
+
 ### Organizational Web (if new)
 
 Suggested sequence: Situational, Population, Organizational, Market, Structural, Historical, Community, Ecological.
@@ -409,7 +417,15 @@ What else has changed recently?
 ---
 {"conditions":[{"id":"c-01","name":"Housing instability","domain":"situational","confidence":"explicit","felt_experience":null,"is_program_contribution":false,"subpopulation":[]}],"connections":[],"subpopulations":[]}
 
-Condition fields: id, name, domain, confidence, felt_experience, is_program_contribution, subpopulation
+Condition fields: id, name, domain, confidence, felt_experience, is_program_contribution, subpopulation, condition_modality
+
+CRITICAL — condition_modality: Every condition has a modality. Use exactly one of:
+- "present" (default — the condition exists and is shaping things)
+- "absent" (something is missing that conditions what can happen: no transit, no coordinating body, missing trust, lost institution)
+- "disappearing" (something passing away that is creating space for what follows)
+- "persisting" (continued presence that is conditioning continuation)
+
+Absent conditions are FIRST-CLASS entities with their own name and connections. Do NOT record an absence as the negation of a present condition. "Lack of trust" is a first-class condition with condition_modality: "absent" — not the inverse of "trust". When the user describes something missing, lost, or no longer there, record it as a condition with the appropriate modality. Omit the field entirely or set "present" for normal present-tense conditions.
 
 CRITICAL: Condition names MUST be short — 2 to 6 words maximum. These are labels on a visual map, not descriptions. Examples:
 - GOOD: "Housing instability", "Staff turnover risk", "Volunteer-driven delivery"

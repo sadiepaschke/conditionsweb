@@ -128,6 +128,7 @@ The `ontological_frame` value is stored in web metadata and injected into the AI
 | `confidence` | enum | `explicit`, `inferred`, `suggested_by_ai` |
 | `felt_experience` | string? | How this condition is experienced (mattering, belonging, dignity, or their opposites) |
 | `is_program_contribution` | boolean | Whether this condition is something the program creates or strengthens |
+| `condition_modality` | enum | One of: `present`, `absent`, `disappearing`, `persisting`. Default: `present`. Maps to the Patthana paccaya — `present`=atthi, `absent`=natthi, `disappearing`=vigata, `persisting`=avigata. Most conditions are `present`. An absent condition (no transit, absence of trust, missing coordinating body, lost institution) is a first-class entity with its own connections — not the negation of a present condition. |
 | `created_at` | datetime | When this condition was added to the web |
 
 ### Connection (Edge)

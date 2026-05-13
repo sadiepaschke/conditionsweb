@@ -19,6 +19,12 @@ CREATE TYPE connection_type AS ENUM (
   'blocks', 'amplifies', 'depends_on', 'addresses', 'partially_addresses'
 );
 
+-- Patthana paccaya: present=atthi, absent=natthi, disappearing=vigata, persisting=avigata.
+-- Absent conditions are first-class entities, not the negation of a present condition.
+CREATE TYPE condition_modality_type AS ENUM (
+  'present', 'absent', 'disappearing', 'persisting'
+);
+
 CREATE TYPE ontological_frame_type AS ENUM (
   'human_systems', 'ecological_relational', 'spiritual_ceremonial', 'mixed'
 );
@@ -55,6 +61,7 @@ CREATE TABLE conditions (
   confidence confidence_level DEFAULT 'explicit',
   felt_experience TEXT,
   is_program_contribution BOOLEAN DEFAULT false,
+  condition_modality condition_modality_type NOT NULL DEFAULT 'present',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

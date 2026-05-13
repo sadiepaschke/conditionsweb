@@ -50,6 +50,13 @@ export function parseWebData(text: string): ParseResult | null {
         .filter((n: any) => n && n.id)
         .map((n: any) => {
           const domain = n.domain || TYPE_TO_DOMAIN[n.type] || "situational";
+          const rawModality = n.condition_modality;
+          const condition_modality =
+            rawModality === "absent" ||
+            rawModality === "disappearing" ||
+            rawModality === "persisting"
+              ? rawModality
+              : "present";
           return {
             id: normalizeId(n.id),
             label: String(n.name || n.label || "Unnamed"),
@@ -59,6 +66,7 @@ export function parseWebData(text: string): ParseResult | null {
             confidence: n.confidence || "inferred",
             felt_experience: n.felt_experience || null,
             source: "ai" as const,
+            condition_modality,
           };
         });
 
