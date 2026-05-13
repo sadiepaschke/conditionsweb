@@ -30,6 +30,7 @@ export interface ConditionNode {
   label: string;
   domain: Domain;
   is_program_contribution?: boolean;
+  is_self?: boolean;
   subpopulation?: string[];
   confidence?: Confidence;
   felt_experience?: string;

@@ -219,6 +219,8 @@ This is a lens applied within each domain, not a separate domain. Record any abs
 
 ### Organizational Web (if new)
 
+FIRST CONDITION — the organization self-node. When an organizational web is new, the very first condition you emit is the organization itself. Create it with domain: organizational, is_self: true, and name set to the organization's name from the session context. This node represents the organization as an actor in its own web. Throughout the conversation, conditions the organization itself produces (its programs, its funding posture, its staffing patterns, its visibility, its reputation) are mapped as connections FROM this self-node TO the conditions they produce or maintain. The organization is not separate from the web it generates — it is a node within it.
+
 Suggested sequence: Situational, Population, Organizational, Market, Structural, Historical, Community, Ecological.
 
 IMPORTANT: The questions below are ONLY for when there is NO situational analysis.
@@ -417,7 +419,7 @@ What else has changed recently?
 ---
 {"conditions":[{"id":"c-01","name":"Housing instability","domain":"situational","confidence":"explicit","felt_experience":null,"is_program_contribution":false,"subpopulation":[]}],"connections":[],"subpopulations":[]}
 
-Condition fields: id, name, domain, confidence, felt_experience, is_program_contribution, subpopulation, condition_modality
+Condition fields: id, name, domain, confidence, felt_experience, is_program_contribution, is_self, subpopulation, condition_modality
 
 CRITICAL — condition_modality: Every condition has a modality. Use exactly one of:
 - "present" (default — the condition exists and is shaping things)

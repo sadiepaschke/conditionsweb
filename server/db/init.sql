@@ -61,6 +61,7 @@ CREATE TABLE conditions (
   confidence confidence_level DEFAULT 'explicit',
   felt_experience TEXT,
   is_program_contribution BOOLEAN DEFAULT false,
+  is_self BOOLEAN NOT NULL DEFAULT false,
   condition_modality condition_modality_type NOT NULL DEFAULT 'present',
   created_at TIMESTAMPTZ DEFAULT now()
 );

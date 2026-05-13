@@ -62,6 +62,7 @@ export function parseWebData(text: string): ParseResult | null {
             label: String(n.name || n.label || "Unnamed"),
             domain,
             is_program_contribution: n.is_program_contribution || n.type === "program" || false,
+            is_self: n.is_self === true,
             subpopulation: Array.isArray(n.subpopulation) ? n.subpopulation : [],
             confidence: n.confidence || "inferred",
             felt_experience: n.felt_experience || null,

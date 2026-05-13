@@ -2,7 +2,7 @@ import pool, { ageQuery } from "../pool.js";
 
 export async function syncConditions(
   webId: string,
-  nodes: { id: string; label: string; domain: string; is_program_contribution?: boolean; subpopulation?: string[]; confidence?: string; felt_experience?: string; condition_modality?: string }[],
+  nodes: { id: string; label: string; domain: string; is_program_contribution?: boolean; is_self?: boolean; subpopulation?: string[]; confidence?: string; felt_experience?: string; condition_modality?: string }[],
   turnNumber?: number
 ) {
   const client = await pool.connect();
@@ -28,10 +28,11 @@ export async function syncConditions(
       if (existingMap.has(node.id)) {
         await client.query(
           `UPDATE conditions SET name = $1, domain = $2, is_program_contribution = $3,
-           subpopulation = $4, confidence = $5, felt_experience = $6,
-           condition_modality = $7
-           WHERE web_id = $8 AND ai_node_id = $9`,
+           is_self = $4, subpopulation = $5, confidence = $6, felt_experience = $7,
+           condition_modality = $8
+           WHERE web_id = $9 AND ai_node_id = $10`,
           [node.label, node.domain, node.is_program_contribution || false,
+           node.is_self === true,
            node.subpopulation || null, node.confidence || "explicit",
            node.felt_experience || null, node.condition_modality || "present",
            webId, node.id]
@@ -39,9 +40,10 @@ export async function syncConditions(
       } else {
         await client.query(
           `INSERT INTO conditions (web_id, ai_node_id, name, domain, is_program_contribution,
-           subpopulation, source_turn, confidence, felt_experience, condition_modality)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+           is_self, subpopulation, source_turn, confidence, felt_experience, condition_modality)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [webId, node.id, node.label, node.domain, node.is_program_contribution || false,
+           node.is_self === true,
            node.subpopulation || null, turnNumber || null,
            node.confidence || "explicit", node.felt_experience || null,
            node.condition_modality || "present"]
@@ -74,7 +76,8 @@ async function syncConditionsToGraph(webId: string, nodes: any[]) {
       await ageQuery(
         `MERGE (c:Condition {ai_id: '${node.id}', web_id: '${webId}'})
          SET c.name = '${safeLabel}', c.domain = '${node.domain}',
-             c.is_program_contribution = ${node.is_program_contribution || false}
+             c.is_program_contribution = ${node.is_program_contribution || false},
+             c.is_self = ${node.is_self === true}
          RETURN c`
       );
     } catch (e) {
