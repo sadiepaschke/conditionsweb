@@ -90,8 +90,21 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!analysis) {
+      const finishReason = data.candidates?.[0]?.finishReason;
+      const blockReason = data.promptFeedback?.blockReason;
+      const safetyRatings = data.candidates?.[0]?.safetyRatings || data.promptFeedback?.safetyRatings;
+      const apiError = data.error;
+      console.error("Gemini returned no analysis:", JSON.stringify({
+        httpStatus: geminiResponse.status,
+        finishReason, blockReason, safetyRatings, apiError,
+        rawCandidatesLength: data.candidates?.length,
+      }));
+      const detail = apiError?.message
+        || (blockReason && `Blocked by safety filter: ${blockReason}`)
+        || (finishReason && `Stopped early: ${finishReason}`)
+        || "no candidates returned";
       return new Response(
-        JSON.stringify({ error: "Gemini returned no analysis. Try again." }),
+        JSON.stringify({ error: `Gemini returned no analysis (${detail}). Try again.`, debug: { finishReason, blockReason, apiError } }),
         { status: 502, headers: { "Content-Type": "application/json" } }
       );
     }
