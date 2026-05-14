@@ -1,4 +1,6 @@
 // Upload a file to Gemini File API and return the file URI
+import mammoth from "mammoth";
+
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -32,6 +34,16 @@ export default async (req) => {
         type: "text",
         name: file.name,
         content: buffer.toString("utf-8"),
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    // Gemini doesn't accept .docx — extract text via mammoth and return as text.
+    if (ext === "docx") {
+      const { value } = await mammoth.extractRawText({ buffer });
+      return new Response(JSON.stringify({
+        type: "text",
+        name: file.name,
+        content: value,
       }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
