@@ -416,6 +416,37 @@ Generated automatically from the web data. Checks:
 
 ---
 
+## Adaptation Log
+
+The Adaptation Log is the **eigenform tracker**. Eigenforms (von Foerster) are stable patterns that emerge from recursive operation; the Log captures which conditions stabilize through iterated interaction over time. This is what makes the Log analytically useful, not just an audit trail.
+
+Every turn of the conversation rewrites the cumulative web state. The Log is what lets us look across those rewrites and ask: *which conditions, once introduced, persisted? Which kept being modified? Which were dropped? Which kept being re-introduced under different names? Which connections kept reasserting themselves?* The conditions and relationships that survive iterated interaction are the eigenforms — the structures the system has stabilized around.
+
+### Current implementation
+
+The Adaptation Log lives across two existing tables:
+
+- **`conversation_turns`** — every model turn stores its full content and the parsed JSON web state in `raw_web_data` (jsonb). This is the per-turn snapshot from which the Log is computed.
+- **`conditions`** + **`connections`** — the source-of-truth current state. The Log is the diff series between successive `raw_web_data` snapshots, anchored to the per-turn timestamps.
+
+No separate `adaptation_log` table is required. Analytical queries derive the Log on demand from `conversation_turns.raw_web_data` ordered by `turn_number`.
+
+### What the Log answers
+
+- **Stable conditions** — which conditions have appeared and persisted across N consecutive turns
+- **Volatile conditions** — which conditions have been added, removed, renamed, or reclassified multiple times
+- **Recurring conditions** — which conditions have been dropped and re-introduced (sometimes under a different label, suggesting the user circling back to the same underlying truth)
+- **Stable relationships** — which connections have persisted across iterations
+- **Drift** — which domains the conversation keeps returning to, signaling unfinished material
+
+These questions are the foundation of the Conditions Strategy module's "high-leverage conditions" analysis, the Conditions Web Review's coverage check, and (later) cross-portfolio pattern detection for foundations.
+
+### Why eigenform framing matters
+
+Calling the Log "history" or "audit trail" frames it as a record of what happened. Calling it the eigenform tracker frames it as a record of *what the system stabilized around* — the patterns that survived recursive operation. The same data; a different analytical question. The system prompt and review checklist should prefer eigenform language when describing the Log's purpose to the user and to reviewers.
+
+---
+
 ## Migration: Existing Nine Types to Eight Domains
 
 | Old type (9-type system) | New domain (8-domain system) | Notes |
