@@ -1,5 +1,41 @@
 // Non-streaming analyze function — collects full response then returns JSON
 // Uses Gemini File API URIs (pre-uploaded) for fast processing
+const MODEL_FALLBACK = ["gemini-2.5-flash", "gemini-2.0-flash"];
+const RETRYABLE_HTTP = new Set([429, 500, 502, 503, 504]);
+const RETRYABLE_STATUS = new Set(["UNAVAILABLE", "RESOURCE_EXHAUSTED", "INTERNAL"]);
+
+async function callGeminiWithFallback(apiKey, body) {
+  const retryDelayMs = 1500;
+  let lastResult = null;
+  for (let m = 0; m < MODEL_FALLBACK.length; m++) {
+    const model = MODEL_FALLBACK[m];
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      );
+      const text = await response.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      const apiStatus = data?.error?.status;
+      const transient = RETRYABLE_HTTP.has(response.status) || RETRYABLE_STATUS.has(apiStatus);
+      lastResult = { status: response.status, data, model };
+      if (!transient) return lastResult;
+      if (attempt === 0) {
+        console.warn(`[analyze][${model}] transient (http=${response.status} status=${apiStatus}); retrying in ${retryDelayMs}ms`);
+        await new Promise(r => setTimeout(r, retryDelayMs));
+      } else if (m < MODEL_FALLBACK.length - 1) {
+        console.warn(`[analyze][${model}] still transient after retry; falling back to ${MODEL_FALLBACK[m + 1]}`);
+      }
+    }
+  }
+  return lastResult;
+}
+
 export default async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -70,23 +106,13 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
 
     const contentParts = [{ text: analysisPrompt }, ...parts];
 
-    // Use non-streaming API since file URIs make processing much faster
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: contentParts }],
-          generationConfig: {
-            maxOutputTokens: 8000,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
-      }
-    );
-
-    const data = await geminiResponse.json();
+    const { status: httpStatus, data, model } = await callGeminiWithFallback(apiKey, {
+      contents: [{ role: "user", parts: contentParts }],
+      generationConfig: {
+        maxOutputTokens: 8000,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
     const analysis = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!analysis) {
@@ -95,7 +121,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
       const safetyRatings = data.candidates?.[0]?.safetyRatings || data.promptFeedback?.safetyRatings;
       const apiError = data.error;
       console.error("Gemini returned no analysis:", JSON.stringify({
-        httpStatus: geminiResponse.status,
+        httpStatus, model,
         finishReason, blockReason, safetyRatings, apiError,
         rawCandidatesLength: data.candidates?.length,
       }));
@@ -104,7 +130,7 @@ ${urlTexts.length > 0 ? "---\n\nURL CONTENT:\n\n" + urlTexts.join("\n\n") : ""}`
         || (finishReason && `Stopped early: ${finishReason}`)
         || "no candidates returned";
       return new Response(
-        JSON.stringify({ error: `Gemini returned no analysis (${detail}). Try again.`, debug: { finishReason, blockReason, apiError } }),
+        JSON.stringify({ error: `Gemini returned no analysis (${detail}). Try again.`, debug: { finishReason, blockReason, apiError, model } }),
         { status: 502, headers: { "Content-Type": "application/json" } }
       );
     }
